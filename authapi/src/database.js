@@ -3,7 +3,7 @@ var mysql = require('mysql')
 exports.Database = class {
 
     constructor(config = {
-        host: process.env.MYSQL_HOST,
+        host: process.env.MASQL_HOST,
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE
