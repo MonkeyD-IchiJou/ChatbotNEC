@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+    dbserver:
+        image: cb/dbserver
+        build: ./dbserver
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: ichijou1234
+        env_file:
+            - ./environments/db.env
+        ports:
+            - 3306:3306
+        volumes:
+            - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
