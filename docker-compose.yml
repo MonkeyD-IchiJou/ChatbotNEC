@@ -23,6 +23,7 @@ services:
             - 443:443
         depends_on:
             - authapi
+            - socketlivechat
 
     authapi:
         image: cb/authapi
@@ -36,3 +37,15 @@ services:
             - dbserver
         volumes:
             - ./authapi/src:/home/node/app/src
+
+    socketlivechat:
+        image: cb/socketlivechat
+        build: ./socketlivechat
+        restart: always
+        env_file:
+            - ./environments/node.env
+            - ./environments/db.env
+        depends_on:
+            - dbserver
+        volumes:
+            - ./socketlivechat/src:/home/node/app/src
