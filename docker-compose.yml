@@ -13,3 +13,16 @@ services:
             - 3306:3306
         volumes:
             - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+
+    authapi:
+        image: cb/authapi
+        build: ./authapi
+        restart: always
+        env_file:
+            - ./environments/node.env
+            - ./environments/db.env
+            - ./environments/email.env
+        depends_on:
+            - dbserver
+        volumes:
+            - ./authapi/src:/home/node/app/src
