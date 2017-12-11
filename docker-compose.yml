@@ -14,6 +14,16 @@ services:
         volumes:
             - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
 
+    webserver:
+        image: cb/webserver
+        build: ./webserver
+        restart: always
+        ports:
+            - 80:80
+            - 443:443
+        depends_on:
+            - authapi
+
     authapi:
         image: cb/authapi
         build: ./authapi
