@@ -45,7 +45,6 @@ services:
         env_file:
             - ./environments/node.env
             - ./environments/db.env
-            - ./environments/email.env
         depends_on:
             - dbserver
         volumes:
