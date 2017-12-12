@@ -10,10 +10,14 @@ const bs58 = require('bs58')
 process.env.MYSQL_DATABASE = 'NECAIDB'
 process.env.MYSQL_USER = 'necaidbuser'
 process.env.MYSQL_PASSWORD = 'NECAIDBuser20171020'
-process.env.jwtSecret = 'soseCREToMg8228'
-*/
+process.env.jwtSecret = 'soseCREToMg8228'*/
+
 
 var { Database } = require('../../database')
+
+var getUUID = () => {
+    return bs58.encode(Buffer.from(uuidv4()))
+}
 
 // create new live chat for this user
 var createNewLivechat = (user_submit) => {
@@ -101,6 +105,252 @@ var createNewLivechat = (user_submit) => {
 
 }
 
+// delete a live chat for this user
+var deleteLivechatProject = (livechat_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'DELETE FROM livechat WHERE uuid=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_deletelivechat = await database.query(sql_queries[0], [livechat_uuid])
+
+            if (!row_deletelivechat.affectedRows) {
+                throw db_errors[0]
+            }
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
+// refresh live chat project uuid
+var refreshLivechatUUID = (livechat_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'UPDATE livechat SET uuid=? WHERE uuid=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_updateuuid = await database.query(sql_queries[0], [getUUID(), livechat_uuid])
+
+            if (!row_updateuuid.affectedRows) {
+                throw db_errors[0]
+            }
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
+// change the live chat project name
+var updateLivechatName = (livechat_uuid, newname) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'UPDATE livechat SET name=? WHERE uuid=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_updateuuid = await database.query(sql_queries[0], [newname, livechat_uuid])
+
+            if (!row_updateuuid.affectedRows) {
+                throw db_errors[0]
+            }
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
+// change the live chat project name
+var updateLivechatDescription = (livechat_uuid, newdescription) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'UPDATE livechat SET description=? WHERE uuid=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_updateuuid = await database.query(sql_queries[0], [newdescription, livechat_uuid])
+
+            if (!row_updateuuid.affectedRows) {
+                throw db_errors[0]
+            }
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
+// get the live chat info based on this uuid
+var getLivechatInfo = (livechat_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'SELECT * FROM livechat WHERE uuid=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_livechat = await database.query(sql_queries[0], [livechat_uuid])
+
+            if (row_livechat.length <= 0) {
+                throw db_errors[0]
+            }
+
+            resolve(row_livechat)
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
+// get the live chat info based on this uuid
+var getLivechatsInfo = (user_id) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'SELECT * FROM livechat WHERE createdby=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such live chat project'
+            ]
+
+            // delete this intent
+            let row_livechat = await database.query(sql_queries[0], [user_id])
+
+            if (row_livechat.length <= 0) {
+                throw db_errors[0]
+            }
+
+            resolve(row_livechat)
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
 // every api router will go through JWT verification first
 router.use(
     [
@@ -150,7 +400,7 @@ router.post(
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() });
+            return res.status(422).json({ success: false, errors: errors.mapped() })
         }
         else {
 
@@ -158,7 +408,7 @@ router.post(
             let name = matchedData(req).name
             let description = matchedData(req).description
             // base 58 encode it
-            let public_uuid = bs58.encode(Buffer.from(uuidv4()))
+            let public_uuid = getUUID()
 
             createNewLivechat({ user_id: userid, name: name, description: description, uuid: public_uuid }).then((result)=>{
 
@@ -171,6 +421,180 @@ router.post(
             })
 
         }
+    }
+)
+
+// delete this a live chat project
+router.delete(
+    '/',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
+    ],
+    (req, res) => {
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+
+            deleteLivechatProject(matchedData(req).uuid).then(() => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+
+        }
+    }
+)
+
+router.post(
+    '/refreshUUID',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            refreshLivechatUUID(matchedData(req).uuid).then(() => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
+router.post(
+    '/livechatName',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
+        check('name', 'name for the live chat project is missing').exists().isLength({ min: 1 }),
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateLivechatName(matchedData(req).uuid, matchedData(req).name).then(() => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
+router.get(
+    '/info',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            getLivechatInfo(matchedData(req).uuid).then((result) => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true, result: result }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
+router.get(
+    '/infos',
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            getLivechatsInfo(req.decoded.data.i).then((results) => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true, result: results }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
+router.post(
+    '/livechatDescription',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
+        check('description', 'description for the live chat project is missing').exists().isLength({ min: 1 }),
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateLivechatDescription(matchedData(req).uuid, matchedData(req).description).then(() => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
     }
 )
 
