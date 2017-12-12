@@ -1,0 +1,12 @@
+var app = require('express')()
+const bodyParser = require('body-parser')
+
+// parse application/json
+app.use(bodyParser.json({ limit: '50mb' }))
+
+// route to the specific version of api routes
+app.use('/v1', require('./routes/v1/livechat'))
+
+app.listen(process.env.PORT, () => {
+    console.log('listening in port: ' + process.env.PORT)
+})
