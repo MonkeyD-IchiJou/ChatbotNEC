@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0, shrink-to-fit=no")
+        meta(name="theme-color", content="#000000")
+        title LiveChat
+    body
+        #root #{livechatId}
+
+        script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
+        script(type="text/javascript").
+            var socket = io.connect('https://localhost')
+
+            // client successfully connected to my socket server
+            socket.on('connect', () => {
+                // firstly, this client will ask to join this room
+                // by giving the livechat project uuid
+                socket.emit('client_join_room', {roomId: '#{livechatId}'})
+
+                socket.on('clientlist_update', (data)=>{
+                    console.log(data)
+                })
+            })
