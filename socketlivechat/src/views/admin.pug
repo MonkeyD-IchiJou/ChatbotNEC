@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0, shrink-to-fit=no")
+        meta(name="theme-color", content="#000000")
+        title Admin Page
+    body
+        #root Admin Page Pls #{livechatId}
+
+        script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
+        script(type="text/javascript").
+            var socket = io.connect('https://localhost')
+            var adminSocketId = ''
+            var livechatId = '#{livechatId}'
+            var username = 'IchiJou'
+
+            // client successfully connected to my socket server
+            socket.on('connect', () => {
+
+                // firstly, this admin will ask to join its livechat room
+                // by giving the livechat project uuid
+                socket.emit('admin_join_room', {roomId: livechatId, username: username})
+
+                // waiting for confirmation for joining room
+                socket.on('admin_joined', (data)=>{
+                    adminSocketId = data.socketId
+                    console.log('successfully joined the room liao')
+                    console.log(adminSocketId)
+                })
+
+                // admin constantly listening for new update of client list
+                socket.on('clientlist_update', (data)=>{
+                    console.log(data)
+
+                    /*if(data.clientsInfo.length > 0) {
+                        socket.emit('admin_send_client_msg', {
+                            clientSocketId: data.clientsInfo[0].clientSocketId, 
+                            adminUsername: username,
+                            msg: 'hey just send for fun'
+                        })
+                    }*/
+
+                })
+
+            })
+
+

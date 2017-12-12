@@ -11,14 +11,25 @@ html(lang="en")
         script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
         script(type="text/javascript").
             var socket = io.connect('https://localhost')
+            var socketId = ''
+            var livechatId = '#{livechatId}'
+            var username = 'Anonymous1'
 
             // client successfully connected to my socket server
             socket.on('connect', () => {
                 // firstly, this client will ask to join this room
                 // by giving the livechat project uuid
-                socket.emit('client_join_room', {roomId: '#{livechatId}'})
+                socket.emit('client_join_room', {roomId: livechatId, username: username})
 
-                socket.on('clientlist_update', (data)=>{
+                // waiting for confirmation for joining room
+                socket.on('client_joined', (data)=>{
+                    socketId = data.socketId
+                    console.log('successfully joined the room liao')
+                    console.log(socketId)
+                })
+
+                // waiting for admin to send me some msg
+                socket.on('client_receiving_msg', (data) => {
                     console.log(data)
                 })
             })
