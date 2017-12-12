@@ -38,6 +38,19 @@ services:
         volumes:
             - ./authapi/src:/home/node/app/src
 
+    livechatapi:
+        image: cb/livechatapi
+        build: ./livechatapi
+        restart: always
+        env_file:
+            - ./environments/node.env
+            - ./environments/db.env
+            - ./environments/email.env
+        depends_on:
+            - dbserver
+        volumes:
+            - ./livechatapi/src:/home/node/app/src
+
     socketlivechat:
         image: cb/socketlivechat
         build: ./socketlivechat
