@@ -15,7 +15,8 @@ html(lang="en")
 
             var adminSocketId = ''
             var livechatId = '#{livechatId}'
-            var username = 'IchiJou'
+            var username = 'IchiJou' // hardcoded
+            var adminuserId = '73' // hardcoded
             var clientList = []
 
             // client successfully connected to my socket server
@@ -23,7 +24,7 @@ html(lang="en")
 
                 // firstly, this admin will ask to join its livechat room
                 // by giving the livechat project uuid
-                socket.emit('admin_join_room', {roomId: livechatId, username: username})
+                socket.emit('admin_join_room', {roomId: livechatId, username: username, userid: adminuserId})
 
                 // waiting for confirmation for joining room
                 socket.on('admin_joined', (data)=>{
@@ -49,8 +50,10 @@ html(lang="en")
 
                 if(clientList.length > 0) {
                     socket.emit('admin_send_client_msg', {
-                        clientSocketId: clientList[0].clientSocketId, 
-                        adminUsername: username,
+                        clientSocketId: clientList[0].clientSocketId,
+                        clientUsername: clientList[0].clientName,
+                        username: username,
+                        userid: adminuserId,
                         msg: 'hey just send for fun'
                     })
                 }
