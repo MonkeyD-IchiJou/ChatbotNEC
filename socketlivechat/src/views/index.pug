@@ -53,6 +53,7 @@ html(lang="en")
                 if(currentAdmin) {
                     socket.emit('client_send_admin_msg', {
                         clientSocketId: socketId,
+                        clientUsername: username,
                         adminUsername: currentAdmin,
                         msg: 'client reply liao... kekekek'
                     })
