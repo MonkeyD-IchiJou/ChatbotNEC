@@ -12,9 +12,9 @@ process.env.MYSQL_USER = 'necaidbuser'
 process.env.MYSQL_PASSWORD = 'NECAIDBuser20171020'
 process.env.jwtSecret = 'soseCREToMg8228'*/
 
-
 var { Database } = require('../../database')
 
+// generate a uuid for live chat
 var getUUID = () => {
     return bs58.encode(Buffer.from(uuidv4()))
 }
@@ -359,29 +359,29 @@ router.use(
     (req, res, next) => {
 
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() });
+            return res.status(422).json({ success: false, errors: errors.mapped() })
         }
         else {
 
             // get the matched data
             // get the jwt token from body
-            let token = matchedData(req).token;
+            let token = matchedData(req).token
 
             jwt.verify(token, process.env.jwtSecret, (err, decoded) => {
                 if (err) {
-                    return res.json({ success: false, errors: { jwt: 'json web token validate error' } });
+                    return res.json({ success: false, errors: { jwt: 'json web token validate error' } })
                 }
                 else {
 
                     // Officially trusted this client!
-                    req.decoded = decoded;
-                    next();
+                    req.decoded = decoded
+                    next()
                 }
-            });
+            })
         }
 
     }
@@ -396,7 +396,7 @@ router.post(
     ],
     (req, res) => {
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -432,7 +432,7 @@ router.delete(
     ],
     (req, res) => {
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -454,6 +454,7 @@ router.delete(
     }
 )
 
+// refresh live chat uuid
 router.post(
     '/refreshUUID',
     [
@@ -462,7 +463,7 @@ router.post(
     (req, res) => {
 
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -483,6 +484,7 @@ router.post(
     }
 )
 
+// get live chat name
 router.post(
     '/livechatName',
     [
@@ -492,7 +494,7 @@ router.post(
     (req, res) => {
 
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -513,6 +515,38 @@ router.post(
     }
 )
 
+// get live chat description
+router.post(
+    '/livechatDescription',
+    [
+        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
+        check('description', 'description for the live chat project is missing').exists().isLength({ min: 1 }),
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateLivechatDescription(matchedData(req).uuid, matchedData(req).description).then(() => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
+// get a specific live chat project info for this user
 router.get(
     '/info',
     [
@@ -521,7 +555,7 @@ router.get(
     (req, res) => {
 
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -542,12 +576,13 @@ router.get(
     }
 )
 
+// get all the live chat projects infos for this user
 router.get(
     '/infos',
     (req, res) => {
 
         // checking the results
-        const errors = validationResult(req);
+        const errors = validationResult(req)
 
         if (!errors.isEmpty()) {
             // if request datas is incomplete or error, return error msg
@@ -559,36 +594,6 @@ router.get(
                 // send the result back to client
                 res.setHeader('Content-type', 'application/json')
                 res.send(JSON.stringify({ success: true, result: results }))
-
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-        }
-
-    }
-)
-
-router.post(
-    '/livechatDescription',
-    [
-        check('uuid', 'uuid for the live chat project is missing').exists().isLength({ min: 1 }),
-        check('description', 'description for the live chat project is missing').exists().isLength({ min: 1 }),
-    ],
-    (req, res) => {
-
-        // checking the results
-        const errors = validationResult(req);
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-            updateLivechatDescription(matchedData(req).uuid, matchedData(req).description).then(() => {
-
-                // send the result back to client
-                res.setHeader('Content-type', 'application/json')
-                res.send(JSON.stringify({ success: true }))
 
             }).catch((error) => {
                 return res.status(422).json({ success: false, errors: error })
