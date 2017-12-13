@@ -3,6 +3,66 @@ var server = require('http').Server(app)
 var io = require('socket.io')(server)
 const path = require('path')
 
+// temp only.. remove it in production
+/*process.env.MASQL_HOST = 'localhost'
+process.env.MYSQL_DATABASE = 'NECAIDB'
+process.env.MYSQL_USER = 'necaidbuser'
+process.env.MYSQL_PASSWORD = 'NECAIDBuser20171020'
+process.env.jwtSecret = 'soseCREToMg8228'*/
+
+var { Database } = require('./database')
+
+// insert msg into my db server
+var insertMessageToDB = (identifier, livechatId, chatbotid, message, from) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                "INSERT INTO total_messages (identifier, total_messages, livechat_id, chatbot_id) VALUES (?, 1, ?, ?) ON DUPLICATE KEY UPDATE total_messages = total_messages + 1",
+                "SELECT total_messages FROM total_messages WHERE identifier=?",
+                "INSERT INTO messages (identifier_message_number, message, sender) VALUES(?, ?, ?)"
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'livechat id or chatbot id must exist'
+            ]
+
+            // livechat id or chatbot id must exist
+            if (livechatId === null && chatbotid === null) {
+                throw db_errors[0]
+            }
+
+            // first, insert or update the total_messages table
+            let row_insertorupdate = await database.query(sql_queries[0], [identifier, livechatId, chatbotid])
+
+            // secondly get the total_messages
+            let row_totalmessages = await database.query(sql_queries[1], [identifier])
+
+            // insert into my messages table
+            let identifier_message_number = identifier + ':' + row_totalmessages[0].total_messages
+            let row_insertmessage = await database.query(sql_queries[2], [identifier_message_number, message, from])
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
 // Load View Engine
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'pug')
@@ -137,7 +197,8 @@ io.on('connection', (socket) => {
             socket.sessionData = {
                 room: rooms[1], // store the room name in the socket session for this admin
                 isClientMah: false, // this socket is a client
-                username: data.username
+                username: data.username,
+                userid: data.userid
             }
 
             // confirmation about joining this room
@@ -151,16 +212,32 @@ io.on('connection', (socket) => {
     })
 
     // listening on whether admin want to send msg to client or not
-    socket.on('admin_send_client_msg', (data) => {
-        emitMsgPrivately(
-            socket, 
-            data.clientSocketId, 
-            'client_receiving_msg', 
-            { 
-                msg: data.msg, 
-                adminUsername: data.adminUsername 
-            }
-        )
+    socket.on('admin_send_client_msg', (adminData) => {
+
+        // admin is the sender
+        let sender = adminData.userid
+
+        // constructing the identifier
+        let identifier = sender + ':' + adminData.clientUsername + ',' + adminData.clientSocketId
+
+        // insert this msg to my db first
+        insertMessageToDB(identifier, socket.sessionData.room, null, adminData.msg, sender).then(() => {
+
+            // emit the msg back to client.. avoid pulling from the db server
+            emitMsgPrivately(
+                socket,
+                adminData.clientSocketId,
+                'client_receiving_msg',
+                {
+                    msg: adminData.msg,
+                    adminUsername: adminData.username
+                }
+            )
+
+        }).catch((error) => {
+            console.log(error)
+        })
+
     })
 
     // listening on whether client want to send msg to admin or not
@@ -189,15 +266,27 @@ io.on('connection', (socket) => {
 
                 // emit to certain admin by matching the admin username
                 if (sessionData.username === data.adminUsername) {
-                    emitMsgPrivately(
-                        socket,
-                        allsockets_id[i],
-                        'admin_receiving_msg',
-                        {
-                            msg: data.msg,
-                            clientSocketId: data.clientSocketId
-                        }
-                    )
+
+                    let sender = data.clientUsername + ',' + data.clientSocketId
+                    let identifier = sessionData.userid + ':' + sender
+
+                    insertMessageToDB(identifier, sessionData.room, null, data.msg, sender).then(() => {
+
+                        // simply send it back to admin after storing it into my db.. avoid requesting my db server
+                        emitMsgPrivately(
+                            socket,
+                            allsockets_id[i],
+                            'admin_receiving_msg',
+                            {
+                                msg: data.msg,
+                                clientSocketId: data.clientSocketId
+                            }
+                        )
+
+                    }).catch((error) => {
+                        console.log(error)
+                    })
+
                 }
 
             }
