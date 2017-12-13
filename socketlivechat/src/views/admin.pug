@@ -7,13 +7,16 @@ html(lang="en")
         title Admin Page
     body
         #root Admin Page Pls #{livechatId}
+        button#clickclick ClickToSendMsgToClient
 
         script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
         script(type="text/javascript").
             var socket = io.connect('https://localhost')
+
             var adminSocketId = ''
             var livechatId = '#{livechatId}'
             var username = 'IchiJou'
+            var clientList = []
 
             // client successfully connected to my socket server
             socket.on('connect', () => {
@@ -31,18 +34,30 @@ html(lang="en")
 
                 // admin constantly listening for new update of client list
                 socket.on('clientlist_update', (data)=>{
+                    clientList = data.clientsInfo
+                    console.log(clientList)
+                })
+
+                // waiting for any clients to send me some msg
+                socket.on('admin_receiving_msg', (data) => {
                     console.log(data)
-
-                    /*if(data.clientsInfo.length > 0) {
-                        socket.emit('admin_send_client_msg', {
-                            clientSocketId: data.clientsInfo[0].clientSocketId, 
-                            adminUsername: username,
-                            msg: 'hey just send for fun'
-                        })
-                    }*/
-
                 })
 
             })
+
+            var clicktosendclient = () => {
+
+                if(clientList.length > 0) {
+                    socket.emit('admin_send_client_msg', {
+                        clientSocketId: clientList[0].clientSocketId, 
+                        adminUsername: username,
+                        msg: 'hey just send for fun'
+                    })
+                }
+
+            }
+
+            document.getElementById("clickclick").onclick = clicktosendclient
+
 
 

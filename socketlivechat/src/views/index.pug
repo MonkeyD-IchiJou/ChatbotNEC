@@ -9,17 +9,29 @@ html(lang="en")
         #root #{livechatId}
 
         script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
+        button#clickclick ClickToSendMsgToAdmin
+
         script(type="text/javascript").
             var socket = io.connect('https://localhost')
+
             var socketId = ''
             var livechatId = '#{livechatId}'
             var username = 'Anonymous1'
+            var message = 'problem with something'
+            var attentionLevel = 1 // 0 or 1
+            var currentAdmin = ''
 
             // client successfully connected to my socket server
             socket.on('connect', () => {
+
                 // firstly, this client will ask to join this room
                 // by giving the livechat project uuid
-                socket.emit('client_join_room', {roomId: livechatId, username: username})
+                socket.emit('client_join_room', {
+                    roomId: livechatId, 
+                    username: username, 
+                    message: message, 
+                    attentionLevel: attentionLevel
+                })
 
                 // waiting for confirmation for joining room
                 socket.on('client_joined', (data)=>{
@@ -30,6 +42,22 @@ html(lang="en")
 
                 // waiting for admin to send me some msg
                 socket.on('client_receiving_msg', (data) => {
+                    currentAdmin = data.adminUsername
                     console.log(data)
                 })
+
             })
+
+            var clickToSendAdmin = () => {
+
+                if(currentAdmin) {
+                    socket.emit('client_send_admin_msg', {
+                        clientSocketId: socketId,
+                        adminUsername: currentAdmin,
+                        msg: 'client reply liao... kekekek'
+                    })
+                }
+
+            }
+
+            document.getElementById("clickclick").onclick = clickToSendAdmin
