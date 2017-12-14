@@ -11,7 +11,7 @@ html(lang="en")
 
         script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js")
         script(type="text/javascript").
-            var socket = io.connect('https://localhost')
+            var livechatSocket = io.connect('https://localhost/lcIO')
 
             var adminSocketId = ''
             var livechatId = 'QRdCHThaReh4vgQwuqN71LWBopF12ufXRAfcoSvzMGLRM7Cn6' // hardcoded
@@ -19,28 +19,26 @@ html(lang="en")
             var adminuserId = '73' // hardcoded
             var clientList = []
 
-            // client successfully connected to my socket server
-            socket.on('connect', () => {
-
+            livechatSocket.on('connect', () => {
                 // firstly, this admin will ask to join its livechat room
                 // by giving the livechat project uuid
-                socket.emit('admin_join_room', {roomId: livechatId, username: username, userid: adminuserId})
+                livechatSocket.emit('admin_join_room', {roomId: livechatId, username: username, userid: adminuserId})
 
                 // waiting for confirmation for joining room
-                socket.on('admin_joined', (data)=>{
+                livechatSocket.on('admin_joined', (data)=>{
                     adminSocketId = data.socketId
                     console.log('successfully joined the room liao')
                     console.log(adminSocketId)
                 })
 
                 // admin constantly listening for new update of client list
-                socket.on('clientlist_update', (data)=>{
+                livechatSocket.on('clientlist_update', (data)=>{
                     clientList = data.clientsInfo
                     console.log(clientList)
                 })
 
                 // waiting for any clients to send me some msg
-                socket.on('admin_receiving_msg', (data) => {
+                livechatSocket.on('admin_receiving_msg', (data) => {
                     console.log(data)
                 })
 
@@ -49,7 +47,7 @@ html(lang="en")
             var clicktosendclient = () => {
 
                 if(clientList.length > 0) {
-                    socket.emit('admin_send_client_msg', {
+                    livechatSocket.emit('admin_send_client_msg', {
                         clientSocketId: clientList[0].clientSocketId,
                         clientUsername: clientList[0].clientName,
                         username: username,
