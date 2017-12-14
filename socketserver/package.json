@@ -1,7 +1,7 @@
 {
-    "name": "socket-livechat",
+    "name": "socketserver",
     "version": "0.5.0",
-    "description": "Authentication server api",
+    "description": "socket io server for chatting",
     "main": "./src/index.js",
     "scripts": {
         "start": "node ./src/index.js",
