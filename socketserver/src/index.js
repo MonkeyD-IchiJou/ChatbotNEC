@@ -12,6 +12,9 @@ process.env.jwtSecret = 'soseCREToMg8228'*/
 
 var { Database } = require('./database')
 
+// live chat io namespace
+var lcIO = io.of('/lcIO')
+
 // insert msg into my db server
 var insertMessageToDB = (identifier, livechatId, chatbotid, message, from) => {
 
@@ -92,8 +95,8 @@ server.listen(process.env.PORT, () => {
 })
 
 // emit clientlist to all the sockets in the room (whoever is listening)
-var emitMsgToRoom = (roomname, channelname, msg) => {
-    io.to(roomname).emit(channelname, msg)
+var emitMsgToRoom = (whichio, roomname, channelname, msg) => {
+    whichio.to(roomname).emit(channelname, msg)
 }
 
 // emit msg to self (if i am listening)
@@ -107,12 +110,12 @@ var emitMsgPrivately = (from, sendto, channelname, msg) => {
 }
 
 // update and emit the list of clients' socket id
-var socketClientListUpdate = (roomname, socket) => {
+var socketClientListUpdate = (whichio, roomname, socket) => {
 
     try{
 
         // get all the sockets in the room
-        let allsocketsinfo = io.nsps['/'].adapter.rooms[roomname]
+        let allsocketsinfo = whichio.adapter.rooms[roomname]
 
         if(allsocketsinfo) {
 
@@ -122,7 +125,7 @@ var socketClientListUpdate = (roomname, socket) => {
             let clientsInfo = []
             for (let i = 0; i < allsockets_id.length; ++i) {
 
-                let clientSocket = io.sockets.connected[allsockets_id[i]]
+                let clientSocket = whichio.connected[allsockets_id[i]]
                 let sessionData = clientSocket.sessionData
 
                 // I only need clients socket
@@ -142,7 +145,7 @@ var socketClientListUpdate = (roomname, socket) => {
             }
             else {
                 // emit the online clients list
-                emitMsgToRoom(roomname, 'clientlist_update', { clientsInfo: clientsInfo })
+                emitMsgToRoom(whichio, roomname, 'clientlist_update', { clientsInfo: clientsInfo })
             }
 
         }
@@ -159,12 +162,12 @@ var socketClientListUpdate = (roomname, socket) => {
 // each live chat projects is one room
 // room name will be the UUID of the livechat project
 
-io.on('connection', (socket) => {
+lcIO.on('connection', (socket) => {
 
     // listening on whether got any new clients request to join any room or not
-    socket.on('client_join_room', (data) => {
+    socket.on('client_join_room', (clientData) => {
 
-        socket.join(data.roomId, () => {
+        socket.join(clientData.roomId, () => {
 
             // get the rooms info in this socket
             let rooms = Object.keys(socket.rooms)
@@ -172,13 +175,13 @@ io.on('connection', (socket) => {
             socket.sessionData = {
                 room: rooms[1], // store the room name in the socket session for this client
                 isClientMah: true, // this socket is a client
-                username: data.username,
-                message: data.message,
-                attentionLevel: data.attentionLevel
+                username: clientData.username,
+                message: clientData.message,
+                attentionLevel: clientData.attentionLevel
             }
 
             // informed that new user has joined the room
-            socketClientListUpdate(socket.sessionData.room)
+            socketClientListUpdate(lcIO, socket.sessionData.room)
 
             // confirmation about joining this room
             emitMsg(socket, 'client_joined', { socketId: rooms[0] })
@@ -188,9 +191,9 @@ io.on('connection', (socket) => {
     })
 
     // listening on whether got any admin request to join any room or not
-    socket.on('admin_join_room', (data)=>{
+    socket.on('admin_join_room', (admindata) => {
 
-        socket.join(data.roomId, () => {
+        socket.join(admindata.roomId, () => {
 
             // get the rooms info in this socket
             let rooms = Object.keys(socket.rooms)
@@ -198,15 +201,15 @@ io.on('connection', (socket) => {
             socket.sessionData = {
                 room: rooms[1], // store the room name in the socket session for this admin
                 isClientMah: false, // this socket is a client
-                username: data.username,
-                userid: data.userid
+                username: admindata.username,
+                userid: admindata.userid
             }
 
             // confirmation about joining this room
             emitMsg(socket, 'admin_joined', { socketId: rooms[0] })
 
             // let the admin know about current list of client online
-            socketClientListUpdate(socket.sessionData.room, socket)
+            socketClientListUpdate(lcIO, socket.sessionData.room, socket)
 
         })
 
@@ -245,7 +248,7 @@ io.on('connection', (socket) => {
     socket.on('client_send_admin_msg', (data) => {
 
         // get all the sockets in the room
-        let allsocketsinfo = io.nsps['/'].adapter.rooms[socket.sessionData.room]
+        let allsocketsinfo = lcIO.adapter.rooms[socket.sessionData.room]
 
         // need to store the client msg into my db??
 
@@ -253,11 +256,11 @@ io.on('connection', (socket) => {
 
             let allsockets_id = Object.keys(allsocketsinfo.sockets)
 
-             // first need to find out the admin socket id
+            // first need to find out the admin socket id
             let adminInfos = []
             for (let i = 0; i < allsockets_id.length; ++i) {
 
-                let adminSocket = io.sockets.connected[allsockets_id[i]]
+                let adminSocket = lcIO.connected[allsockets_id[i]]
                 let sessionData = adminSocket.sessionData
 
                 // I only want to emit msg to my admin
@@ -305,7 +308,7 @@ io.on('connection', (socket) => {
             // if the socket is client
 
             // update the list of client socket id again to the room
-            socketClientListUpdate(roomname)
+            socketClientListUpdate(lcIO, roomname)
 
             // client officially leave this room
             socket.leave(roomname)
