@@ -68,21 +68,22 @@ app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'pug')
 
 // serve the client files
-app.get('/:livechatId', function (req, res) {
+app.get('/', function (req, res) {
+
+    // need to see whether the tokens are valid or not
+    // check validation in client side?
+    let livechatToken = req.query.livechatToken
+    let chatbotToken = req.query.botToken
 
     res.render('index', {
-        livechatId: req.params.livechatId
+        livechatId: livechatToken
     })
 
 })
 
 // temp.. serve the admin frontend files
-app.get('/admintemp/:livechatId', function (req, res) {
-
-    res.render('admin', {
-        livechatId: req.params.livechatId
-    })
-
+app.get('/admintemp', function (req, res) {
+    res.render('admin')
 })
 
 // server listening on port 80
