@@ -331,7 +331,7 @@ router.post(
 
             }).catch((error) => {
 
-                return res.status(422).json({ authResult: false, errors: error });
+                return res.status(422).json({ authResult: false, errors: error })
 
             })
 
@@ -384,5 +384,41 @@ router.get('/confirm', (req, res) => {
     }
 
 })
+
+// check for jwt validation
+router.post(
+    '/validate',
+    [
+        check('token', 'must have a token').exists()
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+
+            // get the matched data
+            // get the jwt token from body
+            let token = matchedData(req).token
+
+            jwt.verify(token, process.env.jwtSecret, (err, decoded) => {
+                if (err) {
+                    return res.json({ success: false, errors: { jwt: 'json web token validate error' } })
+                }
+                else {
+                    // Officially trusted this client!
+                    res.setHeader('Content-type', 'application/json')
+                    res.send(JSON.stringify({ authResult: true, userid: decoded.data.i }))
+                }
+            })
+        }
+
+    }
+)
 
 module.exports = router
