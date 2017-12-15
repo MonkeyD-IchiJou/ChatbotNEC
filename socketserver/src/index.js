@@ -79,6 +79,7 @@ app.get('/', function (req, res) {
     let chatbotToken = req.query.botToken
 
     res.render('index', {
+        chatbotId: chatbotToken,
         livechatId: livechatToken
     })
 
