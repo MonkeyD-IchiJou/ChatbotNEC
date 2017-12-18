@@ -2,6 +2,7 @@ var app = require('express')()
 var server = require('http').Server(app)
 var io = require('socket.io')(server)
 const path = require('path')
+var cors = require('cors')
 
 // temp only.. remove it in production
 /*process.env.MASQL_HOST = 'localhost'
@@ -66,6 +67,8 @@ var insertMessageToDB = (identifier, livechatId, chatbotid, message, from) => {
 
 }
 
+// cross-origin-header.. enable all cors requests
+app.use(cors())
 // Load View Engine
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'pug')
