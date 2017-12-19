@@ -194,6 +194,16 @@ lcIO.on('connection', (socket) => {
 
     })
 
+    socket.on('client_update_info', (clientData) => {
+        socket.sessionData.username = clientData.username
+        socket.sessionData.message = clientData.message
+
+        console.log(socket.sessionData)
+
+        // informed that new user has joined the room
+        socketClientListUpdate(lcIO, socket.sessionData.room)
+    })
+
     // listening on whether got any admin request to join any room or not
     socket.on('admin_join_room', (admindata) => {
 
