@@ -75,6 +75,8 @@ services:
     volumes:
         - ./socketserver/src:/home/node/app/src
 
+  #chatbotapi:
+
   nluserver:
     image: rasa/rasa_nlu
     restart: always
