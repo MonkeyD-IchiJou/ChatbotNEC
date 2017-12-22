@@ -6,86 +6,97 @@ services:
     build: ./dbserver
     restart: always
     environment:
-        MYSQL_ROOT_PASSWORD: ichijou1234
+      MYSQL_ROOT_PASSWORD: ichijou1234
     env_file:
-        - ./environments/db.env
+      - ./environments/db.env
     ports:
-        - 3306:3306
+      - 3306:3306
     volumes:
-        - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
 
   webserver:
     image: cb/webserver
     build: ./webserver
     restart: always
     ports:
-        - 80:80
-        - 443:443
+      - 80:80
+      - 443:443
     depends_on:
-        - authapi
-        - livechatapi
-        - socketserver
+      - authapi
+      - livechatapi
+      - socketserver
 
   authapi:
     image: cb/authapi
     build: ./authapi
     restart: always
     env_file:
-        - ./environments/node.env
-        - ./environments/db.env
-        - ./environments/email.env
+      - ./environments/node.env
+      - ./environments/db.env
+      - ./environments/email.env
     depends_on:
-        - dbserver
+      - dbserver
     volumes:
-        - ./authapi/src:/home/node/app/src
+      - ./authapi/src:/home/node/app/src
 
   userapi:
     image: cb/userapi
     build: ./userapi
     restart: always
     env_file:
-        - ./environments/node.env
-        - ./environments/db.env
+      - ./environments/node.env
+      - ./environments/db.env
     depends_on:
-        - dbserver
+      - dbserver
     volumes:
-        - ./userapi/src:/home/node/app/src
+      - ./userapi/src:/home/node/app/src
 
   livechatapi:
     image: cb/livechatapi
     build: ./livechatapi
     restart: always
     env_file:
-        - ./environments/node.env
-        - ./environments/db.env
+      - ./environments/node.env
+      - ./environments/db.env
     depends_on:
-        - dbserver
+      - dbserver
     volumes:
-        - ./livechatapi/src:/home/node/app/src
+      - ./livechatapi/src:/home/node/app/src
 
   socketserver:
     image: cb/socketserver
     build: ./socketserver
     restart: always
     env_file:
-        - ./environments/node.env
-        - ./environments/db.env
+      - ./environments/node.env
+      - ./environments/db.env
     depends_on:
-        - dbserver
+      - dbserver
     volumes:
-        - ./socketserver/src:/home/node/app/src
+      - ./socketserver/src:/home/node/app/src
 
   chatbotapi:
     image: cb/chatbotapi
     build: ./chatbotapi
     restart: always
     env_file:
-        - ./environments/node.env
-        - ./environments/db.env
+      - ./environments/node.env
+      - ./environments/db.env
     depends_on:
-        - dbserver
+      - dbserver
     volumes:
-        - ./chatbotapi/src:/home/node/app/src
+      - ./chatbotapi/src:/home/node/app/src
+
+  chatbotengine:
+    image: cb/chatbotengine
+    build: ./chatbotengine
+    restart: always
+    depends_on:
+      - coreserver
+      - nluserver
+    volumes:
+      - botproject:/app/projects
+      - ./chatbotengine/src:/usr/src
 
   nluserver:
     image: rasa/rasa_nlu
@@ -99,21 +110,9 @@ services:
     image: cb/coreserver
     build: ./coreserver
     restart: always
-    ports:
-      - 5001:80
     volumes:
       - botproject:/app/projects
       - ./coreserver/src:/usr/src
-
-  chatbotengine:
-    image: cb/chatbotengine
-    build: ./chatbotengine
-    restart: always
-    ports:
-      - 5002:80
-    volumes:
-      - botproject:/app/projects
-      - ./chatbotengine/src:/usr/src
 
 volumes:
   botproject:
