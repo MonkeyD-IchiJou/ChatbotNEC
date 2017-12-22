@@ -2,8 +2,7 @@ version: '3'
 
 services:
   dbserver:
-    image: cb/dbserver
-    build: ./dbserver
+    image: mariadb:5.5.57
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ichijou1234
@@ -12,7 +11,15 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - ./dbserver/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - mysqlvolume:/var/lib/mysql
+  
+  mongoserver:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - mongovolume:/data/db
 
   webserver:
     image: cb/webserver
@@ -84,6 +91,7 @@ services:
       - ./environments/db.env
     depends_on:
       - dbserver
+      - mongoserver
     volumes:
       - ./chatbotapi/src:/home/node/app/src
 
@@ -116,3 +124,5 @@ services:
 
 volumes:
   botproject:
+  mongovolume:
+  mysqlvolume:
