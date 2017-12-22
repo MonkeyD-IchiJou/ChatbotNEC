@@ -14,7 +14,9 @@
         "cors": "^2.8.4",
         "express": "^4.16.2",
         "express-validator": "^4.3.0",
+        "json2md": "^1.5.10",
         "jsonwebtoken": "^8.1.0",
+        "mongodb": "^3.0.0-rc0",
         "mysql": "^2.15.0",
         "uuid": "^3.1.0"
     }
