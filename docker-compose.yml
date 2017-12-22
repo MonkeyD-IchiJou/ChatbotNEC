@@ -75,7 +75,17 @@ services:
     volumes:
         - ./socketserver/src:/home/node/app/src
 
-  #chatbotapi:
+  chatbotapi:
+    image: cb/chatbotapi
+    build: ./chatbotapi
+    restart: always
+    env_file:
+        - ./environments/node.env
+        - ./environments/db.env
+    depends_on:
+        - dbserver
+    volumes:
+        - ./chatbotapi/src:/home/node/app/src
 
   nluserver:
     image: rasa/rasa_nlu
