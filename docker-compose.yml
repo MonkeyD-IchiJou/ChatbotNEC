@@ -95,5 +95,15 @@ services:
       - botproject:/app/projects
       - ./coreserver/src:/usr/src
 
+  chatbotengine:
+    image: cb/chatbotengine
+    build: ./chatbotengine
+    restart: always
+    ports:
+      - 5002:80
+    volumes:
+      - botproject:/app/projects
+      - ./chatbotengine/src:/usr/src
+
 volumes:
   botproject:
