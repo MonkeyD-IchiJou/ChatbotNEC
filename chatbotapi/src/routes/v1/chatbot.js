@@ -51,96 +51,6 @@ json2md.converters.actions = function (input, json2md) {
     return output
 }
 
-let j2md = json2md([
-    {
-        storyname: "happy path"
-    },
-    {
-        intentname: [
-            '_greet',
-            {
-                actions: [
-                    "utter_greet"
-                ]
-            },
-            '_mood_great',
-            {
-                actions: [
-                    "utter_happy"
-                ]
-            }
-        ]
-    },
-    {
-        storyname: "sad path 1"
-    },
-    {
-        intentname: [
-            "_greet",
-            {
-                actions: [
-                    "utter_greet"
-                ]
-            },
-            "_mood_unhappy",
-            {
-                actions: [
-                    "utter_cheer_up",
-                    "utter_did_that_help"
-                ]
-            },
-            "_mood_affirm",
-            {
-                actions: [
-                    "utter_happy"
-                ]
-            }
-        ]
-    },
-    {
-        storyname: "sad path 2"
-    },
-    {
-        intentname: [
-            "_greet",
-            {
-                actions: [
-                    "utter_greet"
-                ]
-            },
-            "_mood_unhappy",
-            {
-                actions: [
-                    "utter_cheer_up",
-                    "utter_did_that_help"
-                ]
-            },
-            "_mood_deny",
-            {
-                actions: [
-                    "utter_goodbye"
-                ]
-            }
-        ]
-    },
-    {
-        storyname: "say goodbye"
-    },
-    {
-        intentname: [
-            "_goodbye",
-            {
-                actions: [
-                    "utter_goodbye"
-                ]
-            }
-        ]
-    }
-
-])
-
-
-
 // generate a uuid for chatbot
 var getUUID = () => {
     return bs58.encode(Buffer.from(uuidv4()))
@@ -991,12 +901,161 @@ router.post('/nlustatus', (req, res) => {
         })
 })
 
+var chatbotTraining = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        try {
+
+            // do things in parallel
+            let all_results = await Promise.all([
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
+                        resolve(cbdomain.domain)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                }),
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
+                        resolve(cbstories.stories)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                })
+            ])
+
+            // convert stories to md string
+            let stories_md = json2md(all_results[1])
+
+            resolve({ domain: all_results[0], stories: stories_md })
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+    })
+
+}
+
 // train my chatbot
 router.post('/training', (req, res) => {
     // train nlu + domain + stories
 
     // send domain json to my coreserver.. it will convert to .yml format
     // convert stories json to .md format before sending to my coreserver
+    /*let j2md = json2md([
+        {
+            storyname: "happy path"
+        },
+        {
+            intentname: [
+                '_greet',
+                {
+                    actions: [
+                        "utter_greet"
+                    ]
+                },
+                '_mood_great',
+                {
+                    actions: [
+                        "utter_happy"
+                    ]
+                }
+            ]
+        },
+        {
+            storyname: "sad path 1"
+        },
+        {
+            intentname: [
+                "_greet",
+                {
+                    actions: [
+                        "utter_greet"
+                    ]
+                },
+                "_mood_unhappy",
+                {
+                    actions: [
+                        "utter_cheer_up",
+                        "utter_did_that_help"
+                    ]
+                },
+                "_mood_affirm",
+                {
+                    actions: [
+                        "utter_happy"
+                    ]
+                }
+            ]
+        },
+        {
+            storyname: "sad path 2"
+        },
+        {
+            intentname: [
+                "_greet",
+                {
+                    actions: [
+                        "utter_greet"
+                    ]
+                },
+                "_mood_unhappy",
+                {
+                    actions: [
+                        "utter_cheer_up",
+                        "utter_did_that_help"
+                    ]
+                },
+                "_mood_deny",
+                {
+                    actions: [
+                        "utter_goodbye"
+                    ]
+                }
+            ]
+        },
+        {
+            storyname: "say goodbye"
+        },
+        {
+            intentname: [
+                "_goodbye",
+                {
+                    actions: [
+                        "utter_goodbye"
+                    ]
+                }
+            ]
+        }
+
+    ])*/
+
+    chatbotTraining(req.chatbot_info.uuid).then((result) => {
+        request
+            .post('coreserver/training')
+            .set('contentType', 'application/json; charset=utf-8')
+            .set('dataType', 'json')
+            .send({
+                projectName: req.chatbot_info.uuid,
+                domain: result.domain,
+                stories: result.stories
+            })
+            .end((err, res2) => {
+                if (err) {
+                    return res.status(422).json({ success: false, errors: err })
+                }
+                res.json({ success: true, result: res2.body })
+            })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
 
 })
 
