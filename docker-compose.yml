@@ -104,6 +104,7 @@ services:
       - nluserver
     volumes:
       - botproject:/app/projects
+      - botdialogue:/app/dialogues
       - ./chatbotengine/src:/usr/src
 
   nluserver:
@@ -119,10 +120,13 @@ services:
     build: ./coreserver
     restart: always
     volumes:
-      - botproject:/app/projects
+      - botdialogue:/app/dialogues
+      - tmpvolume:/cbtmp
       - ./coreserver/src:/usr/src
 
 volumes:
   botproject:
+  botdialogue:
   mongovolume:
   mysqlvolume:
+  tmpvolume:
