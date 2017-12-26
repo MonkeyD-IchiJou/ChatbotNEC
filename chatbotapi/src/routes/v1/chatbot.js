@@ -577,7 +577,7 @@ var getDomainFromChatbot = (chatbot_uuid) => {
             const collection = db.collection('domain')
 
             // find all documents
-            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
 
             if (findall.length > 0) {
                 resolve(findall[0])
@@ -613,7 +613,7 @@ var getNLUdataFromChatbot = (chatbot_uuid) => {
             const collection = db.collection('nlu_data')
 
             // find all documents
-            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
 
             if (findall.length > 0) {
                 resolve(findall[0])
@@ -649,13 +649,118 @@ var getStoriesFromChatbot = (chatbot_uuid) => {
             const collection = db.collection('stories')
 
             // find all documents
-            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
 
             if (findall.length > 0) {
                 resolve(findall[0])
             }
 
             throw 'no such stories, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+var updateDomainForChatbot = (chatbot_uuid, domain) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('domain')
+
+            // Update the document with an atomic operator
+            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: {domain: domain} }, { upsert: true, w: 1 })
+
+            if (!update_chatbot.result.n) {
+                throw 'no such domain for this chatbot'
+            }
+            resolve(update_chatbot.result)
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+var updateNLUDataForChatbot = (chatbot_uuid, rasa_nlu_data) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('nlu_data')
+
+            // Update the document with an atomic operator
+            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: {rasa_nlu_data: rasa_nlu_data} }, { upsert: true, w: 1 })
+
+            if (!update_chatbot.result.n) {
+                throw 'no such nlu data for this chatbot'
+            }
+            resolve(update_chatbot.result)
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+var updateStoriesForChatbot = (chatbot_uuid, stories) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('stories')
+
+            // Update the document with an atomic operator
+            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { stories: stories } }, { upsert: true, w: 1 })
+
+            if (!update_chatbot.result.n) {
+                throw 'no such stories for this chatbot'
+            }
+            resolve(update_chatbot.result)
 
         } catch (e) {
             // reject the error
@@ -741,6 +846,34 @@ router.get('/domain', (req, res)=>{
 
 })
 
+// post the domain
+router.post(
+    '/domain',
+    [
+        check('domain', 'domain for the chatbot project is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            let domain = matchedData(req).domain
+            updateDomainForChatbot(
+                req.chatbot_info.uuid,
+                domain
+            ).then((result) => {
+                res.json({ success: true })
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+    }
+)
+
 // get the nlu_data from this chatbot
 router.get('/NLUData', (req, res) => {
 
@@ -752,6 +885,33 @@ router.get('/NLUData', (req, res) => {
 
 })
 
+// post the nlu_data
+router.post(
+    '/NLUData',
+    [
+        check('rasa_nlu_data', 'rasa_nlu_data for the chatbot project is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateNLUDataForChatbot(
+                req.chatbot_info.uuid,
+                matchedData(req).rasa_nlu_data
+            ).then((result) => {
+                res.json({ success: true })
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+    }
+)
+
 // get the stories from this chatbot
 router.get('/stories', (req, res) => {
 
@@ -762,5 +922,32 @@ router.get('/stories', (req, res) => {
     })
 
 })
+
+// post the stories
+router.post(
+    '/stories',
+    [
+        check('stories', 'stories for the chatbot project is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateStoriesForChatbot(
+                req.chatbot_info.uuid,
+                matchedData(req).stories
+            ).then((result) => {
+                res.json({ success: true })
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+    }
+)
 
 module.exports = router
