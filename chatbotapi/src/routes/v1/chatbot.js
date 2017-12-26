@@ -6,6 +6,7 @@ const uuidv4 = require('uuid/v4')
 const bs58 = require('bs58')
 const MongoClient = require('mongodb').MongoClient
 const json2md = require("json2md")
+const request = require('superagent')
 
 // temp only.. remove it in production
 /*process.env.MASQL_HOST = 'localhost'
@@ -918,7 +919,7 @@ router.get('/stories', (req, res) => {
     getStoriesFromChatbot(req.chatbot_info.uuid).then((result) => {
         res.json({ success: true, result: result })
     }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error })
+        return res.status(422).json({ success: false, errors: error.toString() })
     })
 
 })
@@ -949,5 +950,54 @@ router.post(
         }
     }
 )
+
+// train my dialogue using nlu_data
+router.post('/nlutraining', (req, res) => {
+
+    // get the nlu data first
+    getNLUdataFromChatbot(req.chatbot_info.uuid).then((result) => {
+
+        // ask for training
+        request
+            .post('nluserver:5000/train?project=' + req.chatbot_info.uuid + '&pipeline=spacy_sklearn')
+            .set('contentType', 'application/json; charset=utf-8')
+            .set('dataType', 'json')
+            .send({
+                rasa_nlu_data: result.rasa_nlu_data
+            })
+            .end((err, res2) => {
+                if(err) {
+                    return res.status(422).json({ success: false, errors: err })
+                }
+                res.json({ success: true })
+            })
+
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error.toString() })
+    })
+
+})
+
+// dialogue training status
+router.post('/nlustatus', (req, res) => {
+    // ask for training
+    request
+        .get('nluserver:5000/status')
+        .end((err, res2) => {
+            if (err) {
+                return res.status(422).json({ success: false, errors: err })
+            }
+            res.json({ success: true, status: res2.body.available_projects[req.chatbot_info.uuid].status })
+        })
+})
+
+// train my chatbot
+router.post('/training', (req, res) => {
+    // train nlu + domain + stories
+
+    // send domain json to my coreserver.. it will convert to .yml format
+    // convert stories json to .md format before sending to my coreserver
+
+})
 
 module.exports = router
