@@ -897,7 +897,8 @@ router.post('/nlustatus', (req, res) => {
             if (err) {
                 return res.status(422).json({ success: false, errors: err })
             }
-            res.json({ success: true, status: res2.body.available_projects[req.chatbot_info.uuid].status })
+
+            res.json({ success: true, result: res2.body.available_projects[req.chatbot_info.uuid] })
         })
 })
 
@@ -944,7 +945,7 @@ var chatbotTraining = (chatbot_uuid) => {
 }
 
 // train my chatbot
-router.post('/training', (req, res) => {
+router.post('/domaintraining', (req, res) => {
     // train nlu + domain + stories
 
     // send domain json to my coreserver.. it will convert to .yml format
