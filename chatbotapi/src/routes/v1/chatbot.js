@@ -20,43 +20,6 @@ var { Database } = require('../../database')
 // MongoDB Connection URL
 const url = 'mongodb://' + process.env.MAMONGO_HOST
 
-var mongodb_example = () => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('domain')
-
-            // Insert some documents
-            //let ins = await collection.insertMany([{ a: 1 }, { a: 2 }, { a: 3 }])
-            //ins
-
-            // find all documents
-            let findall = await collection.find({}).toArray()
-            findall
-
-            resolve(findall)
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
 json2md.converters.storyname = function (input, json2md) {
     return "## " + input
 }
@@ -174,12 +137,6 @@ let j2md = json2md([
     }
 
 ])
-
-/*mongodb_example().then((r)=>{
-    console.log(r)
-}).catch((e)=>{
-    console.log(e)
-})*/
 
 
 
@@ -603,6 +560,114 @@ router.get(
     }
 )
 
+var getDomainFromChatbot = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('domain')
+
+            // find all documents
+            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+
+            if (findall.length > 0) {
+                resolve(findall[0])
+            }
+
+            throw 'no such domain, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+var getNLUdataFromChatbot = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('nlu_data')
+
+            // find all documents
+            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+
+            if (findall.length > 0) {
+                resolve(findall[0])
+            }
+
+            throw 'no such nlu_data, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+var getStoriesFromChatbot = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('stories')
+
+            // find all documents
+            let findall = await collection.find({ uuid: chatbot_uuid }).toArray()
+
+            if (findall.length > 0) {
+                resolve(findall[0])
+            }
+
+            throw 'no such stories, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
 // get all the chatbot projects infos for this user
 router.get(
     '/infos',
@@ -630,5 +695,72 @@ router.get(
     }
 )
 
+// the rest of the api need chatbot uuid in order to do things
+router.use(
+    [
+        check('uuid', 'must have a chatbot uuid').exists()
+    ],
+    (req, res, next) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+
+            // get the matched data
+            // get the uuid from body
+            let uuid = matchedData(req).uuid
+
+            getChatbotInfo(uuid).then((result) => {
+
+                // Officially got the uuid
+                req.chatbot_info = result[0]
+                next()
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+
+        }
+
+    }
+)
+
+// get the domain from this chatbot
+router.get('/domain', (req, res)=>{
+
+    getDomainFromChatbot(req.chatbot_info.uuid).then((result) => {
+        res.json({ success: true, result: result })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
+
+// get the nlu_data from this chatbot
+router.get('/NLUData', (req, res) => {
+
+    getNLUdataFromChatbot(req.chatbot_info.uuid).then((result) => {
+        res.json({ success: true, result: result })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
+
+// get the stories from this chatbot
+router.get('/stories', (req, res) => {
+
+    getStoriesFromChatbot(req.chatbot_info.uuid).then((result) => {
+        res.json({ success: true, result: result })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
 
 module.exports = router

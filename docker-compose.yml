@@ -12,7 +12,7 @@ services:
       - 3306:3306
     volumes:
       - mysqlvolume:/var/lib/mysql
-  
+
   mongoserver:
     image: mongo
     restart: always
