@@ -471,6 +471,33 @@ router.get(
     }
 )
 
+// get all the chatbot projects infos for this user
+router.get(
+    '/infos',
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            getChatbotsInfo(req.decoded.data.i).then((results) => {
+
+                // send the result back to client
+                res.setHeader('Content-type', 'application/json')
+                res.send(JSON.stringify({ success: true, result: results }))
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+
+    }
+)
+
 var getDomainFromChatbot = (chatbot_uuid) => {
 
     return new Promise(async (resolve, reject) => {
@@ -684,32 +711,47 @@ var updateStoriesForChatbot = (chatbot_uuid, stories) => {
 
 }
 
-// get all the chatbot projects infos for this user
-router.get(
-    '/infos',
-    (req, res) => {
+var chatbotTraining = (chatbot_uuid) => {
 
-        // checking the results
-        const errors = validationResult(req)
+    return new Promise(async (resolve, reject) => {
 
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
+        try {
+
+            // do things in parallel
+            let all_results = await Promise.all([
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
+                        resolve(cbdomain.domain)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                }),
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
+                        resolve(cbstories.stories)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                })
+            ])
+
+            // convert stories to md string
+            let stories_md = json2md(all_results[1])
+
+            resolve({ domain: all_results[0], stories: stories_md })
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
         }
-        else {
-            getChatbotsInfo(req.decoded.data.i).then((results) => {
 
-                // send the result back to client
-                res.setHeader('Content-type', 'application/json')
-                res.send(JSON.stringify({ success: true, result: results }))
+    })
 
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-        }
-
-    }
-)
+}
 
 // the rest of the api need chatbot uuid in order to do things
 router.use(
@@ -890,7 +932,7 @@ router.post('/nlutraining', (req, res) => {
 
 // dialogue training status
 router.post('/nlustatus', (req, res) => {
-    // ask for training
+    // ask for nlu training status
     request
         .get('nluserver:5000/status')
         .end((err, res2) => {
@@ -901,48 +943,6 @@ router.post('/nlustatus', (req, res) => {
             res.json({ success: true, result: res2.body.available_projects[req.chatbot_info.uuid] })
         })
 })
-
-var chatbotTraining = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        try {
-
-            // do things in parallel
-            let all_results = await Promise.all([
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
-                        resolve(cbdomain.domain)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
-                }),
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
-                        resolve(cbstories.stories)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
-                })
-            ])
-
-            // convert stories to md string
-            let stories_md = json2md(all_results[1])
-
-            resolve({ domain: all_results[0], stories: stories_md })
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-    })
-
-}
 
 // train my chatbot
 router.post('/domaintraining', (req, res) => {
@@ -975,6 +975,7 @@ router.post('/domaintraining', (req, res) => {
 
 })
 
+// chatbot query message 
 router.post(
     '/query',
     [
@@ -1010,7 +1011,5 @@ router.post(
 
     }
 )
-
-
 
 module.exports = router
