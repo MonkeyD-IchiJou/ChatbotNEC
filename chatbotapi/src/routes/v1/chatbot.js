@@ -869,7 +869,7 @@ router.post('/nlutraining', (req, res) => {
 
         // ask for training
         request
-            .post('nluserver:5000/train?project=' + req.chatbot_info.uuid + '&pipeline=spacy_sklearn')
+            .post('nluserver:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
             .set('contentType', 'application/json; charset=utf-8')
             .set('dataType', 'json')
             .send({
@@ -950,95 +950,9 @@ router.post('/domaintraining', (req, res) => {
 
     // send domain json to my coreserver.. it will convert to .yml format
     // convert stories json to .md format before sending to my coreserver
-    /*let j2md = json2md([
-        {
-            storyname: "happy path"
-        },
-        {
-            intentname: [
-                '_greet',
-                {
-                    actions: [
-                        "utter_greet"
-                    ]
-                },
-                '_mood_great',
-                {
-                    actions: [
-                        "utter_happy"
-                    ]
-                }
-            ]
-        },
-        {
-            storyname: "sad path 1"
-        },
-        {
-            intentname: [
-                "_greet",
-                {
-                    actions: [
-                        "utter_greet"
-                    ]
-                },
-                "_mood_unhappy",
-                {
-                    actions: [
-                        "utter_cheer_up",
-                        "utter_did_that_help"
-                    ]
-                },
-                "_mood_affirm",
-                {
-                    actions: [
-                        "utter_happy"
-                    ]
-                }
-            ]
-        },
-        {
-            storyname: "sad path 2"
-        },
-        {
-            intentname: [
-                "_greet",
-                {
-                    actions: [
-                        "utter_greet"
-                    ]
-                },
-                "_mood_unhappy",
-                {
-                    actions: [
-                        "utter_cheer_up",
-                        "utter_did_that_help"
-                    ]
-                },
-                "_mood_deny",
-                {
-                    actions: [
-                        "utter_goodbye"
-                    ]
-                }
-            ]
-        },
-        {
-            storyname: "say goodbye"
-        },
-        {
-            intentname: [
-                "_goodbye",
-                {
-                    actions: [
-                        "utter_goodbye"
-                    ]
-                }
-            ]
-        }
-
-    ])*/
 
     chatbotTraining(req.chatbot_info.uuid).then((result) => {
+
         request
             .post('coreserver/training')
             .set('contentType', 'application/json; charset=utf-8')
@@ -1054,10 +968,49 @@ router.post('/domaintraining', (req, res) => {
                 }
                 res.json({ success: true, result: res2.body })
             })
+
     }).catch((error) => {
         return res.status(422).json({ success: false, errors: error })
     })
 
 })
+
+router.post(
+    '/query',
+    [
+        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            request
+                .post('chatbotengine/query')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    projectName: req.chatbot_info.uuid,
+                    text_message: matchedData(req).text_message,
+                    sender_id: matchedData(req).sender_id
+                })
+                .end((err, res2) => {
+                    if (err) {
+                        res.json({ err: err.toString() })
+                    }
+                    res.json(res2.body)
+                })
+        }
+
+    }
+)
+
+
 
 module.exports = router
