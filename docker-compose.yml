@@ -107,14 +107,6 @@ services:
       - botdialogue:/app/dialogues
       - ./chatbotengine/src:/usr/src
 
-  #nluserver:
-  #  image: rasa/rasa_nlu
-  #  restart: always
-  #  ports:
-  #    - 5000:5000
-  #  volumes:
-  #    - botproject:/app/projects
-
   nluserver:
     image: cb/nluserver
     build: ./nluserver
