@@ -1,25 +1,22 @@
 from flask import Flask, request, jsonify
 import json
 import yaml
-from rasa_core.actions import Action
-from rasa_core.agent import Agent
-from rasa_core.interpreter import RasaNLUInterpreter
 import rasa_core.train as rsTrain
 
 # init the flask app
 app = Flask(__name__)
 
 
-@app.route('/query', methods=['POST'])
-def query():
-    return jsonify(success=True, response=request.get_json()['projectName'])
-
-
 @app.route('/training', methods=['POST'])
 def training():
 
+    # setting up the project path (where to output my model).. /app/dialogues/_project_name
     projectPath = "/app/dialogues/" + request.get_json()['projectName']
+
+    # tmp domain.yml dumping place.. /cbtmp/_project_name_domain.yml
     tmpdomainPath = "/cbtmp/" + request.get_json()['projectName'] + '_domain.yml'
+
+    # tmp stories.md dumping place.. /cbtmp/_project_name_stories.md
     tmpstoriesPath = "/cbtmp/" + request.get_json()['projectName'] + '_stories.md'
 
     # turn domain into yml format file
@@ -42,7 +39,7 @@ def training():
         additional_arguments
     )
 
-    return jsonify(success=True)
+    return jsonify(status='ready')
 
 
 # run my flask app
