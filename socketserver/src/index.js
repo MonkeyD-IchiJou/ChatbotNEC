@@ -13,6 +13,9 @@ process.env.jwtSecret = 'soseCREToMg8228'*/
 
 var { Database } = require('./database')
 
+// chatbot io namespace
+var cbIO = io.of('/cbIO')
+
 // live chat io namespace
 var lcIO = io.of('/lcIO')
 
@@ -161,6 +164,60 @@ var socketClientListUpdate = (whichio, roomname, socket) => {
     }
 
 }
+
+// NOTE:
+// each chatbot project is one room
+// i no need to care the real identity of the client for chatbot query
+cbIO.on('connection', (socket) => {
+
+    // listening on whether got any new clients request to join the chatbot room
+    socket.on('client_join_room', (clientData) => {
+        if(clientData.roomId) {
+            // if has the roomId
+            socket.join(clientData.roomId, () => {
+
+                // get the rooms info in this socket
+                let rooms = Object.keys(socket.rooms)
+
+                // setting up the client socket session data
+                socket.sessionData = {
+                    room: rooms[1], // store the room name in the socket session for this client
+                    isClientMah: true, // this socket is a client
+                }
+
+                // confirmation about joining this room
+                emitMsg(socket, 'client_joined', { socketId: rooms[0] })
+
+            })
+        }
+    })
+
+    // listening on whether client got send any msg to the chatbot or not
+    socket.on('client_send_chatbot', (clientData) => {
+        console.log(clientData)
+        console.log(socket.sessionData.room)
+        // query to chatbot pls
+
+        emitMsg(socket, 'chatbot_send_client', { msg: 'hi from chatbot, what you want' })
+    })
+
+    // when the client disconnect
+    socket.on('disconnect', () => {
+        let roomname = socket.sessionData.room
+
+        if (socket.sessionData.isClientMah) {
+            // if the socket is client
+            // client officially leave this room
+            socket.leave(roomname)
+
+        }
+        else {
+            // admin officially leave this room
+            socket.leave(roomname)
+        }
+
+    })
+})
 
 // NOTE:
 // each live chat projects is one room
