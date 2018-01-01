@@ -140,8 +140,7 @@ var socketClientListUpdate = (whichio, roomname, socket) => {
                     clientsInfo.push({ 
                         clientSocketId: allsockets_id[i], 
                         clientName: sessionData.username, 
-                        clientMsg: sessionData.message,
-                        clientAttentionLevel: sessionData.attentionLevel
+                        clientMsg: sessionData.message
                     })
                 }
 
@@ -185,8 +184,36 @@ cbIO.on('connection', (socket) => {
                     isClientMah: true, // this socket is a client
                 }
 
+                // informed that new user has joined the room
+                socketClientListUpdate(cbIO, socket.sessionData.room)
+
                 // confirmation about joining this room
                 emitMsg(socket, 'client_joined', { socketId: rooms[0] })
+
+            })
+        }
+    })
+
+    // listening on whether got any new admins request to join the chatbot room
+    socket.on('admin_join_room', (adminData) => {
+        if (adminData.roomId) {
+            // if has the roomId
+            socket.join(adminData.roomId, () => {
+
+                // get the rooms info in this socket
+                let rooms = Object.keys(socket.rooms)
+
+                // setting up the client socket session data
+                socket.sessionData = {
+                    room: rooms[1], // store the room name in the socket session for this client
+                    isClientMah: false, // this socket is an admin
+                }
+
+                // confirmation about joining this room
+                emitMsg(socket, 'admin_joined', { socketId: rooms[0] })
+
+                // let the admin know about current list of client online
+                socketClientListUpdate(cbIO, socket.sessionData.room, socket)
 
             })
         }
@@ -203,17 +230,26 @@ cbIO.on('connection', (socket) => {
 
     // when the client disconnect
     socket.on('disconnect', () => {
-        let roomname = socket.sessionData.room
 
-        if (socket.sessionData.isClientMah) {
-            // if the socket is client
-            // client officially leave this room
-            socket.leave(roomname)
+        try {
+            let roomname = socket.sessionData.room
 
-        }
-        else {
-            // admin officially leave this room
-            socket.leave(roomname)
+            if (socket.sessionData.isClientMah) {
+                // if the socket is client
+
+                // update the list of client socket id again to the room
+                socketClientListUpdate(cbIO, roomname)
+
+                // client officially leave this room
+                socket.leave(roomname)
+
+            }
+            else {
+                // admin officially leave this room
+                socket.leave(roomname)
+            }
+        } catch(e) {
+            console.log(e)
         }
 
     })
