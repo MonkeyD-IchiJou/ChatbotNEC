@@ -306,6 +306,44 @@ var getChatbotsInfo = (user_id) => {
 
 }
 
+// chatbot query message 
+router.post(
+    '/query',
+    [
+        check('uuid', 'must have a chatbot uuid').exists(),
+        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            request
+                .post('chatbotengine/query')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    projectName: matchedData(req).uuid,
+                    text_message: matchedData(req).text_message,
+                    sender_id: matchedData(req).sender_id
+                })
+                .end((err, res2) => {
+                    if (err) {
+                        res.json({ err: err.toString() })
+                    }
+                    res.json(res2.body)
+                })
+        }
+
+    }
+)
+
 // every api router will go through JWT verification first
 router.use(
     [
@@ -974,42 +1012,5 @@ router.post('/domaintraining', (req, res) => {
     })
 
 })
-
-// chatbot query message 
-router.post(
-    '/query',
-    [
-        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 }),
-        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
-    ],
-    (req, res) => {
-
-        // checking the results
-        const errors = validationResult(req)
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-            request
-                .post('chatbotengine/query')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({
-                    projectName: req.chatbot_info.uuid,
-                    text_message: matchedData(req).text_message,
-                    sender_id: matchedData(req).sender_id
-                })
-                .end((err, res2) => {
-                    if (err) {
-                        res.json({ err: err.toString() })
-                    }
-                    res.json(res2.body)
-                })
-        }
-
-    }
-)
 
 module.exports = router
