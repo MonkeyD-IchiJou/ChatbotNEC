@@ -3,6 +3,7 @@ var server = require('http').Server(app)
 var io = require('socket.io')(server)
 const path = require('path')
 var cors = require('cors')
+const request = require('superagent')
 
 // temp only.. remove it in production
 /*process.env.MASQL_HOST = 'localhost'
@@ -221,11 +222,23 @@ cbIO.on('connection', (socket) => {
 
     // listening on whether client got send any msg to the chatbot or not
     socket.on('client_send_chatbot', (clientData) => {
-        console.log(clientData)
-        console.log(socket.sessionData.room)
         // query to chatbot pls
+        request
+            .post('chatbotengine/query')
+            .set('contentType', 'application/json; charset=utf-8')
+            .set('dataType', 'json')
+            .send({
+                projectName: socket.sessionData.room,
+                text_message: clientData.msg,
+                sender_id: socket.id
+            })
+            .end((err, res2) => {
+                if (err) {
+                    console.log(err.toString())
+                }
+                emitMsg(socket, 'chatbot_send_client', { msg: res2.body })
+            })
 
-        emitMsg(socket, 'chatbot_send_client', { msg: 'hi from chatbot, what you want' })
     })
 
     // when the client disconnect
