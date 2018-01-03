@@ -234,7 +234,7 @@ cbIO.on('connection', (socket) => {
             })
             .end((err, res2) => {
                 if (err) {
-                    console.log(err.toString())
+                    console.error(err.toString())
                 }
                 emitMsg(socket, 'chatbot_send_client', { msg: res2.body })
             })
