@@ -1,0 +1,114 @@
+version: '3'
+
+services:
+  dbserver:
+    image: mariadb:5.5.57
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ichijou1234
+    env_file:
+      - ./environments/db.env
+    ports:
+      - 3306:3306
+    volumes:
+      - ./backup/lib/mysql:/var/lib/mysql
+
+  mongoserver:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - ./backup/db:/data/db
+
+  webserver:
+    image: cb/webserver
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - authapi
+      - livechatapi
+      - socketserver
+
+  authapi:
+    image: cb/authapi
+    restart: always
+    env_file:
+      - ./environments/node.env
+      - ./environments/db.env
+      - ./environments/email.env
+    depends_on:
+      - dbserver
+
+  userapi:
+    image: cb/userapi
+    restart: always
+    env_file:
+      - ./environments/node.env
+      - ./environments/db.env
+    depends_on:
+      - dbserver
+
+  livechatapi:
+    image: cb/livechatapi
+    restart: always
+    env_file:
+      - ./environments/node.env
+      - ./environments/db.env
+    depends_on:
+      - dbserver
+
+  socketserver:
+    image: cb/socketserver
+    restart: always
+    env_file:
+      - ./environments/node.env
+      - ./environments/db.env
+    depends_on:
+      - dbserver
+
+  chatbotapi:
+    image: cb/chatbotapi
+    restart: always
+    env_file:
+      - ./environments/node.env
+      - ./environments/db.env
+    depends_on:
+      - dbserver
+      - mongoserver
+
+  chatbotengine:
+    image: cb/chatbotengine
+    restart: always
+    depends_on:
+      - coreserver
+      - nluserver
+    ports:
+      - 5555:80
+    volumes:
+      - botproject:/app/projects
+      - botdialogue:/app/dialogues
+
+  nluserver:
+    image: cb/nluserver
+    restart: always
+    ports:
+      - 5000:5000
+    volumes:
+      - botproject:/usr/src/projects
+
+  coreserver:
+    image: cb/coreserver
+    restart: always
+    volumes:
+      - botdialogue:/app/dialogues
+      - tmpvolume:/cbtmp
+
+volumes:
+  botproject:
+  botdialogue:
+  mongovolume:
+  mysqlvolume:
+  tmpvolume:
