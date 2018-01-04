@@ -165,6 +165,25 @@ var socketClientListUpdate = (whichio, roomname, socket) => {
 
 }
 
+// query to chatbot pls
+var queryChatbot = (socket, projectName, text_message, sender_id) => {
+    request
+        .post('chatbotengine/query')
+        .set('contentType', 'application/json; charset=utf-8')
+        .set('dataType', 'json')
+        .send({
+            projectName: projectName,
+            text_message: text_message,
+            sender_id: sender_id
+        })
+        .end((err, res2) => {
+            if (err) {
+                console.error(err.toString())
+            }
+            emitMsg(socket, 'chatbot_send_client', { msg: res2.body })
+        })
+}
+
 // NOTE:
 // each chatbot project is one room
 // i no need to care the real identity of the client for chatbot query
@@ -190,6 +209,9 @@ cbIO.on('connection', (socket) => {
 
                 // confirmation about joining this room
                 emitMsg(socket, 'client_joined', { socketId: rooms[0] })
+
+                // say hello to the user who has just joined
+                queryChatbot(socket, socket.sessionData.room, 'hello', socket.id)
 
             })
         }
@@ -223,22 +245,7 @@ cbIO.on('connection', (socket) => {
     // listening on whether client got send any msg to the chatbot or not
     socket.on('client_send_chatbot', (clientData) => {
         // query to chatbot pls
-        request
-            .post('chatbotengine/query')
-            .set('contentType', 'application/json; charset=utf-8')
-            .set('dataType', 'json')
-            .send({
-                projectName: socket.sessionData.room,
-                text_message: clientData.msg,
-                sender_id: socket.id
-            })
-            .end((err, res2) => {
-                if (err) {
-                    console.error(err.toString())
-                }
-                emitMsg(socket, 'chatbot_send_client', { msg: res2.body })
-            })
-
+        queryChatbot(socket, socket.sessionData.room, clientData.msg, socket.id)
     })
 
     // when the client disconnect
