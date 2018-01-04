@@ -210,9 +210,6 @@ cbIO.on('connection', (socket) => {
                 // confirmation about joining this room
                 emitMsg(socket, 'client_joined', { socketId: rooms[0] })
 
-                // say hello to the user who has just joined
-                queryChatbot(socket, socket.sessionData.room, 'hello', socket.id)
-
             })
         }
     })
@@ -245,7 +242,6 @@ cbIO.on('connection', (socket) => {
     // listening on whether client got send any msg to the chatbot or not
     socket.on('client_send_chatbot', (clientData) => {
         // query to chatbot pls
-        queryChatbot(socket, socket.sessionData.room, clientData.msg, socket.id)
     })
 
     // when the client disconnect
