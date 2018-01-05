@@ -8,4 +8,6 @@ RUN python -m spacy download en
 
 EXPOSE 5000
 
+#COPY GovTechBot /usr/data/
+
 CMD ["python", "-m", "rasa_nlu.server"]
