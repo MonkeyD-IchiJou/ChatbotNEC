@@ -60,6 +60,43 @@ var getUserInfo = (user_id) => {
 
 }
 
+// get the live chat info based on this uuid
+var userLogout = (user_id) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        // connect to mariadb/mysql
+        let database = new Database()
+
+        try {
+            // all necessary sql queries
+            const sql_queries = [
+                'UPDATE users SET login=0 WHERE id=?'
+            ]
+
+            // all possible errors
+            const db_errors = [
+                'no such registered user in db'
+            ]
+
+            // update this login
+            let row_updatelogin = await database.query(sql_queries[0], [user_id])
+
+            resolve()
+
+        }
+        catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close the db
+        let dbclose = await database.close()
+
+    })
+
+}
+
 // every api router will go through JWT verification first
 router.use(
     [
@@ -104,6 +141,18 @@ router.post('/', (req, res) => {
         res.setHeader('Content-type', 'application/json')
         res.send(JSON.stringify({ success: true, userinfo: userinfo }))
 
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
+
+router.get('/logout', (req, res) => {
+
+    userLogout(req.decoded.data.i).then(() => {
+        // send the result back to client
+        res.setHeader('Content-type', 'application/json')
+        res.send(JSON.stringify({ logout: true }))
     }).catch((error) => {
         return res.status(422).json({ success: false, errors: error })
     })
