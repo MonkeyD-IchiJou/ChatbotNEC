@@ -168,7 +168,7 @@ var userLoginJwt = (user_submit, cb) => {
             // all necessary sql queries
             const sql_queries = [
                 'SELECT * FROM users WHERE email=?',
-                'UPDATE users SET lastlogin=CURRENT_TIMESTAMP WHERE email=?'
+                'UPDATE users SET lastlogin=CURRENT_TIMESTAMP, login=1 WHERE email=?'
             ]
             // all possible errors
             const login_errors = [
@@ -213,7 +213,7 @@ var userLoginJwt = (user_submit, cb) => {
             ])
 
             // resolve the jwt
-            resolve(all_results[0])
+            resolve({ jwt: all_results[0], hasLoginBefore: user_select.login })
 
         }
         catch (e) {
@@ -324,10 +324,10 @@ router.post(
             const user = matchedData(req);
 
             // user request sign in
-            userLoginJwt({ email: user.email, password: user.password }).then((jwt) => {
+            userLoginJwt({ email: user.email, password: user.password }).then((result) => {
 
                 res.setHeader('Content-type', 'application/json')
-                res.send(JSON.stringify({ authResult: true, jwt: jwt }))
+                res.send(JSON.stringify({ authResult: true, jwt: result.jwt, hasLoginBefore: result.hasLoginBefore }))
 
             }).catch((error) => {
 
