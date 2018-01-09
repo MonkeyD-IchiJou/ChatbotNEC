@@ -1,6 +1,9 @@
 var app = require('express')()
 const bodyParser = require('body-parser')
+var cors = require('cors')
 
+// cross-origin-header.. enable all cors requests
+app.use(cors())
 // parse application/json
 app.use(bodyParser.json({ limit: '50mb' }))
 
