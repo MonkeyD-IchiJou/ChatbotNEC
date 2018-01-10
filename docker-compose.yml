@@ -21,6 +21,13 @@ services:
     volumes:
       - mongovolume:/data/db
 
+  fileserver:
+    image: cb/fileserver
+    build: ./fileserver
+    restart: always
+    volumes:
+      - filestoragevol:/home/node/app/src/static
+
   webserver:
     image: cb/webserver
     build: ./webserver
@@ -32,6 +39,8 @@ services:
       - authapi
       - livechatapi
       - socketserver
+    volumes:
+      - filestoragevol:/filestorage
 
   authapi:
     image: cb/authapi
@@ -95,37 +104,44 @@ services:
     volumes:
       - ./chatbotapi/src:/home/node/app/src
 
-  chatbotengine:
-    image: cb/chatbotengine
-    build: ./chatbotengine
-    restart: always
-    depends_on:
-      - coreserver
-      - nluserver
-    ports:
-      - 5555:80
-    volumes:
-      - botproject:/app/projects
-      - botdialogue:/app/dialogues
-      - ./chatbotengine/src:/usr/src
+  #chatbotengine:
+  #  image: cb/chatbotengine
+  #  build: ./chatbotengine
+  #  restart: always
+  #  depends_on:
+  #    - coreserver
+  #    - nluserver
+  #  ports:
+  #    - 5555:80
+  #  volumes:
+  #    - botproject:/app/projects
+  #    - botdialogue:/app/dialogues
+  #    - ./chatbotengine/src:/usr/src
 
-  nluserver:
-    image: cb/nluserver
-    build: ./nluserver
+  #nluserver:
+  #  image: cb/nluserver
+  #  build: ./nluserver
+  #  restart: always
+  #  ports:
+  #    - 5000:5000
+  #  volumes:
+  #    - botproject:/usr/src/projects
+
+  #coreserver:
+  #  image: cb/coreserver
+  #  build: ./coreserver
+  #  restart: always
+  #  volumes:
+  #    - botdialogue:/app/dialogues
+  #    - tmpvolume:/cbtmp
+  #    - ./coreserver/src:/usr/src
+
+  cbengine:
+    image: cb/cbengine
+    build: ./cbengine
     restart: always
     ports:
       - 5000:5000
-    volumes:
-      - botproject:/usr/src/projects
-
-  coreserver:
-    image: cb/coreserver
-    build: ./coreserver
-    restart: always
-    volumes:
-      - botdialogue:/app/dialogues
-      - tmpvolume:/cbtmp
-      - ./coreserver/src:/usr/src
 
 volumes:
   botproject:
@@ -133,3 +149,4 @@ volumes:
   mongovolume:
   mysqlvolume:
   tmpvolume:
+  filestoragevol:
