@@ -7,6 +7,7 @@ const bs58 = require('bs58')
 const MongoClient = require('mongodb').MongoClient
 const json2md = require("json2md")
 const request = require('superagent')
+var fs = require('fs')
 
 // temp only.. remove it in production
 /*process.env.MASQL_HOST = 'localhost'
@@ -310,9 +311,7 @@ var getChatbotsInfo = (user_id) => {
 router.post(
     '/query',
     [
-        check('uuid', 'must have a chatbot uuid').exists(),
-        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 }),
-        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
+        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 })
     ],
     (req, res) => {
 
@@ -325,19 +324,17 @@ router.post(
         }
         else {
             request
-                .post('chatbotengine/query')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({
-                    projectName: matchedData(req).uuid,
-                    text_message: matchedData(req).text_message,
-                    sender_id: matchedData(req).sender_id
-                })
+                .get('cbengine:5000/parse')
+                .query({ q: matchedData(req).text_message })
                 .end((err, res2) => {
                     if (err) {
                         res.json({ err: err.toString() })
                     }
-                    res.json(res2.body)
+                    let allcbres = res2.body
+                    let chosenintent = allcbres.intent_ranking[0]
+                    chosenintent.name
+                    var obj = JSON.parse(fs.readFileSync('/cb_datas/TESTINGONLY/intents/' + chosenintent.name + '.json', 'utf8'))
+                    res.json({ allres: allcbres, cbres: obj })
                 })
         }
 
