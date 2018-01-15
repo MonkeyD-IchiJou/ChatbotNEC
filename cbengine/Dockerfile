@@ -9,10 +9,4 @@ RUN apt-get update \
     && python -m spacy download en \
     && apt-get purge -y --auto-remove build-essential gcc libffi-dev python3-dev
 
-#ADD cb_datas /cb_datas/
-ADD commands.sh /usr/src/
-#RUN python -m rasa_nlu.train -c /cb_datas/config_spacy.json
-
-EXPOSE 5000
-
-CMD ["sh", "/usr/src/commands.sh"]
+CMD ["python3"]
