@@ -10,9 +10,8 @@ RUN apt-get update \
     && apt-get purge -y --auto-remove build-essential gcc libffi-dev python3-dev
 
 #ADD cb_datas /cb_datas/
+ADD commands.sh /usr/src/
 
 EXPOSE 5000
 
-#RUN python -m rasa_nlu.train -c /cb_datas/config_spacy.json
-CMD ["python", "-m", "rasa_nlu.server", "-c", "/cb_datas/config_spacy.json"]
-#CMD ["python", "-m", "rasa_nlu.server"]
+CMD ["sh", "/usr/src/commands.sh"]
