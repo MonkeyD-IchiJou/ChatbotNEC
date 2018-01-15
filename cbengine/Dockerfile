@@ -11,6 +11,7 @@ RUN apt-get update \
 
 #ADD cb_datas /cb_datas/
 ADD commands.sh /usr/src/
+#RUN python -m rasa_nlu.train -c /cb_datas/config_spacy.json
 
 EXPOSE 5000
 
