@@ -324,7 +324,7 @@ router.post(
         }
         else {
             request
-                .get('cbengine:5000/parse')
+                .get('nluengine:5000/parse')
                 .query({ q: matchedData(req).text_message })
                 .end((err, res2) => {
                     if (err) {
