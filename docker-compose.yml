@@ -147,6 +147,15 @@ services:
     volumes:
       - tmpcbvolume:/cb_datas
 
+  coreengine:
+    image: cb/coreengine
+    build: ./coreengine
+    restart: always
+    ports:
+      - 5005:5000
+    volumes:
+      - tmpcbvolume:/cb_datas
+
 volumes:
   mongovolume:
   mysqlvolume:
