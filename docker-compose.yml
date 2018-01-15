@@ -138,9 +138,9 @@ services:
   #    - tmpvolume:/cbtmp
   #    - ./coreserver/src:/usr/src
 
-  cbengine:
-    image: cb/cbengine
-    build: ./cbengine
+  nluengine:
+    image: cb/nluengine
+    build: ./nluengine
     restart: always
     ports:
       - 5000:5000
