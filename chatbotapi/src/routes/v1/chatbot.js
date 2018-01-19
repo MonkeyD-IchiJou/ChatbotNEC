@@ -931,18 +931,7 @@ var getCBDatasFromChatbot = (chatbot_uuid) => {
 
 }
 
-// get the chatbot datas from this chatbot
-router.get('/CBDatas', (req, res) => {
-
-    getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
-        res.json({ success: true, result: result })
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error })
-    })
-
-})
-
-convertToNluDataFormat = (intents, entities) => {
+var convertToNluDataFormat = (intents, entities) => {
 
     let rasa_nlu_data = {
         common_examples: [],
@@ -994,6 +983,32 @@ convertToNluDataFormat = (intents, entities) => {
 
     return rasa_nlu_data
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// get the chatbot datas from this chatbot
+router.get('/CBDatas', (req, res) => {
+
+    getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
+        res.json({ success: true, result: result })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
 
 // post entities, intents, actions and stories cb datas and store it in my mariadb
 router.post(
@@ -1069,6 +1084,54 @@ router.post('/cbtraining', (req, res) => {
     })
 
 })
+
+// chatbot query message 
+router.post(
+    '/nlucheck',
+    [
+        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            request
+                .get('nluengine:5000/parse')
+                .query({ q: matchedData(req).text_message, project: req.chatbot_info.uuid, model:'model' })
+                .end((err, res2) => {
+                    if (err) {
+                        res.json({ err: err.toString() })
+                    }
+                    let allcbres = res2.body
+                    res.json({ allres: allcbres })
+                })
+        }
+
+    }
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // get the nlu_data from this chatbot
