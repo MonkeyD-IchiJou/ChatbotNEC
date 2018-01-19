@@ -862,6 +862,215 @@ router.post(
     }
 )
 
+var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('chatbot_ml_datas')
+
+            // Update the document with an atomic operator
+            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories } }, { upsert: true, w: 1 })
+
+            if (!update_chatbot.result.n) {
+                throw 'no such cb datas for this cb'
+            }
+            resolve(update_chatbot.result)
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+}
+
+var getCBDatasFromChatbot = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('chatbot_ml_datas')
+
+            // find all documents
+            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
+
+            if (findall.length > 0) {
+                resolve(findall[0])
+            }
+
+            throw 'no such nlu_data, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
+// get the chatbot datas from this chatbot
+router.get('/CBDatas', (req, res) => {
+
+    getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
+        res.json({ success: true, result: result })
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+    })
+
+})
+
+convertToNluDataFormat = (intents, entities) => {
+
+    let rasa_nlu_data = {
+        common_examples: [],
+        entity_synonyms: [],
+        regex_features: []
+    }
+
+    // preparing entity_synonyms
+    rasa_nlu_data.entity_synonyms = entities.map((entity, index) => {
+        return {
+            value: entity.value,
+            synonyms: [...entity.synonyms]
+        }
+    })
+
+    // preparing common_examples
+    intents.forEach((intent) => {
+        let intentName = intent.intent
+        let entitiesToSearch = [...intent.entities]
+
+        rasa_nlu_data.common_examples.push(...intent.texts.map((text) => {
+
+            let entitiesIn = []
+
+            // find out all the synonyms first
+            entitiesToSearch.forEach((entityToSearch, eindex) => {
+                for (let i = 0; i < entities.length; ++i) {
+                    if (entityToSearch === entities[i].value) {
+                        const sns = entities[i].synonyms
+                        sns.forEach((sn) => {
+                            let start = text.indexOf(sn)
+                            if (start >= 0) {
+                                let end = start + sn.length
+                                entitiesIn.push({ start: start, end: end, value: sn, entity: entityToSearch })
+                            }
+                        })
+                    }
+                }
+            })
+
+            return {
+                text: text,
+                intent: intentName,
+                entities: entitiesIn
+            }
+        }))
+
+    })
+
+    return rasa_nlu_data
+}
+
+// post entities, intents, actions and stories cb datas and store it in my mariadb
+router.post(
+    '/CBDatas',
+    [
+        check('cbdatas', 'cbdatas for the chatbot project is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            updateCBDatasForChatbot(
+                req.chatbot_info.uuid,
+                matchedData(req).cbdatas
+            ).then((result) => {
+
+                // when posted new data, train it straight away
+                // get the nlu data first
+                getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
+                    // ask for training
+                    request
+                        .post('nluengine:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
+                        .set('contentType', 'application/json; charset=utf-8')
+                        .set('dataType', 'json')
+                        .send({
+                            rasa_nlu_data: convertToNluDataFormat(result.intents, result.entities)
+                        })
+                        .end((err, res2) => {
+                            if (err) {
+                                return res.status(422).json({ success: false, errors: err })
+                            }
+                            res.json({ success: true })
+                        })
+                }).catch((error) => {
+                    return res.status(422).json({ success: false, errors: error.toString() })
+                })
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+        }
+    }
+)
+
+// train my dialogue using nlu_data
+router.post('/cbtraining', (req, res) => {
+
+    // get the nlu data first
+    getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
+
+        // ask for training
+        request
+            .post('nluengine:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
+            .set('contentType', 'application/json; charset=utf-8')
+            .set('dataType', 'json')
+            .send({
+                rasa_nlu_data: convertToNluDataFormat(result.intents, result.entities)
+            })
+            .end((err, res2) => {
+                if (err) {
+                    return res.status(422).json({ success: false, errors: err })
+                }
+                res.json({ success: true })
+            })
+
+    }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error.toString() })
+    })
+
+})
+
+
 // get the nlu_data from this chatbot
 router.get('/NLUData', (req, res) => {
 

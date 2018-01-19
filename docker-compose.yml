@@ -27,7 +27,6 @@ services:
     restart: always
     volumes:
       - filestoragevol:/home/node/app/static
-      - ./fileserver/src:/home/node/app/src
 
   webserver:
     image: cb/webserver
