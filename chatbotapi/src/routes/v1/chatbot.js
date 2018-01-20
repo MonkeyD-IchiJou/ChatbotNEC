@@ -752,10 +752,12 @@ var traincb = (cbuuid) => {
             // get the nlu data first
             let cbdatas = await getCBDatasFromChatbot(cbuuid)
 
+            // prepare the domain json
             let domain = {
                 intents: [],
                 actions: [],
-                templates: {}
+                entities:[],
+                action_factory: 'remote'
             }
 
             domain.intents = cbdatas.intents.map((intent)=>{
@@ -766,9 +768,28 @@ var traincb = (cbuuid) => {
                 return action.name
             })
 
-            cbdatas.actions.forEach((action) => {
+            domain.entities = cbdatas.entities.map((entity) => {
+                return entity.value
+            })
+
+            /*cbdatas.actions.forEach((action) => {
                 domain.templates[action.name] = []
                 domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
+            })*/
+
+            // next preparing all the stories
+            let jsonarr = []
+
+            cbdatas.stories.forEach((story) => {
+                jsonarr.push({storyname: story.name})
+
+                let intentname = []
+                story.paths.forEach((path)=>{
+                    intentname.push('_'+path.intent)
+                    intentname.push({ actions: path.actions})
+                    jsonarr.push({ intentname: JSON.parse(JSON.stringify(intentname)) })
+                })
+
             })
 
             // coreengine training for domain and stories
@@ -777,7 +798,9 @@ var traincb = (cbuuid) => {
                 .set('contentType', 'application/json; charset=utf-8')
                 .set('dataType', 'json')
                 .send({
-                    domain: domain
+                    projectName: cbuuid,
+                    domain: domain,
+                    stories: json2md(jsonarr)
                 })
                 .end((err, res2) => {
                     if (err) {
