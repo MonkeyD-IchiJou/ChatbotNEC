@@ -1,7 +1,7 @@
 FROM cbengine
 
-WORKDIR /cb/src
+COPY src /usr/src/
 
-EXPOSE 5000
+EXPOSE 80
 
-CMD ["python", "-m", "rasa_nlu.server"]
+CMD [ "python", "./app.py" ]
