@@ -8,9 +8,30 @@ app = Flask(__name__)
 
 @app.route('/training', methods=['POST'])
 def training():
+    # setting up the project path (where to output my model).. /app/dialogues/_project_name
+    projectPath = "/app/dialogues/" + request.get_json()['projectName']
+
+    # turn stories into a file
+    tmpstoriesPath = '/usr/src/tmpstories.yml'
+    storiesfile = open(tmpstoriesPath, 'w+')
+    storiesfile.write(request.get_json()['stories'])
+    storiesfile.close()
+
     # turn domain into yml format file
-    domainfile = open('/usr/src/tmp.yml', 'w+')
+    tmpdomainPath = '/usr/src/tmpdomain.yml'
+    domainfile = open(tmpdomainPath, 'w+')
     yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
+
+    # this is how i train my dialogue
+    additional_arguments = {"epochs": 300}
+    rsTrain.train_dialogue_model(
+        tmpdomainPath,
+        tmpstoriesPath,
+        projectPath,
+        False,
+        None,
+        additional_arguments
+    )
 
     return jsonify(status='ready')
 
