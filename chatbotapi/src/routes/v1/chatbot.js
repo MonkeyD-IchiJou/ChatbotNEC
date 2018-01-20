@@ -533,335 +533,6 @@ router.get(
     }
 )
 
-var getDomainFromChatbot = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('domain')
-
-            // find all documents
-            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
-
-            if (findall.length > 0) {
-                resolve(findall[0])
-            }
-
-            throw 'no such domain, are u sure this is the right chatbot uuid?'
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var getNLUdataFromChatbot = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('nlu_data')
-
-            // find all documents
-            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
-
-            if (findall.length > 0) {
-                resolve(findall[0])
-            }
-
-            throw 'no such nlu_data, are u sure this is the right chatbot uuid?'
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var getStoriesFromChatbot = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('stories')
-
-            // find all documents
-            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
-
-            if (findall.length > 0) {
-                resolve(findall[0])
-            }
-
-            throw 'no such stories, are u sure this is the right chatbot uuid?'
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var updateDomainForChatbot = (chatbot_uuid, domain) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('domain')
-
-            // Update the document with an atomic operator
-            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: {domain: domain} }, { upsert: true, w: 1 })
-
-            if (!update_chatbot.result.n) {
-                throw 'no such domain for this chatbot'
-            }
-            resolve(update_chatbot.result)
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var updateNLUDataForChatbot = (chatbot_uuid, rasa_nlu_data) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('nlu_data')
-
-            // Update the document with an atomic operator
-            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: {rasa_nlu_data: rasa_nlu_data} }, { upsert: true, w: 1 })
-
-            if (!update_chatbot.result.n) {
-                throw 'no such nlu data for this chatbot'
-            }
-            resolve(update_chatbot.result)
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var updateStoriesForChatbot = (chatbot_uuid, stories) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('stories')
-
-            // Update the document with an atomic operator
-            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { stories: stories } }, { upsert: true, w: 1 })
-
-            if (!update_chatbot.result.n) {
-                throw 'no such stories for this chatbot'
-            }
-            resolve(update_chatbot.result)
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
-var chatbotTraining = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        try {
-
-            // do things in parallel
-            let all_results = await Promise.all([
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
-                        resolve(cbdomain.domain)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
-                }),
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
-                        resolve(cbstories.stories)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
-                })
-            ])
-
-            // convert stories to md string
-            let stories_md = json2md(all_results[1])
-
-            resolve({ domain: all_results[0], stories: stories_md })
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-    })
-
-}
-
-// the rest of the api need chatbot uuid in order to do things
-router.use(
-    [
-        check('uuid', 'must have a chatbot uuid').exists()
-    ],
-    (req, res, next) => {
-
-        // checking the results
-        const errors = validationResult(req)
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-
-            // get the matched data
-            // get the uuid from body
-            let uuid = matchedData(req).uuid
-
-            getChatbotInfo(uuid).then((result) => {
-
-                // Officially got the uuid
-                req.chatbot_info = result[0]
-                next()
-
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-
-        }
-
-    }
-)
-
-// get the domain from this chatbot
-router.get('/domain', (req, res)=>{
-
-    getDomainFromChatbot(req.chatbot_info.uuid).then((result) => {
-        res.json({ success: true, result: result })
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error })
-    })
-
-})
-
-// post the domain
-router.post(
-    '/domain',
-    [
-        check('domain', 'domain for the chatbot project is missing').exists().isLength({ min: 1 })
-    ],
-    (req, res) => {
-        // checking the results
-        const errors = validationResult(req)
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-            let domain = matchedData(req).domain
-            updateDomainForChatbot(
-                req.chatbot_info.uuid,
-                domain
-            ).then((result) => {
-                res.json({ success: true })
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-        }
-    }
-)
-
 var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
     return new Promise(async (resolve, reject) => {
 
@@ -984,20 +655,82 @@ var convertToNluDataFormat = (intents, entities) => {
     return rasa_nlu_data
 }
 
+var chatbotTraining = (chatbot_uuid) => {
 
+    return new Promise(async (resolve, reject) => {
 
+        try {
 
+            // do things in parallel
+            let all_results = await Promise.all([
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
+                        resolve(cbdomain.domain)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                }),
+                new Promise(async (resolve, reject) => {
+                    try {
+                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
+                        resolve(cbstories.stories)
+                    } catch (e) {
+                        // reject the error
+                        reject(e.toString())
+                    }
+                })
+            ])
 
+            // convert stories to md string
+            let stories_md = json2md(all_results[1])
 
+            resolve({ domain: all_results[0], stories: stories_md })
 
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
 
+    })
 
+}
 
+// the rest of the api need chatbot uuid in order to do things
+router.use(
+    [
+        check('uuid', 'must have a chatbot uuid').exists()
+    ],
+    (req, res, next) => {
 
+        // checking the results
+        const errors = validationResult(req)
 
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
 
+            // get the matched data
+            // get the uuid from body
+            let uuid = matchedData(req).uuid
 
+            getChatbotInfo(uuid).then((result) => {
 
+                // Officially got the uuid
+                req.chatbot_info = result[0]
+                next()
+
+            }).catch((error) => {
+                return res.status(422).json({ success: false, errors: error })
+            })
+
+        }
+
+    }
+)
 
 // get the chatbot datas from this chatbot
 router.get('/CBDatas', (req, res) => {
@@ -1009,6 +742,76 @@ router.get('/CBDatas', (req, res) => {
     })
 
 })
+
+var traincb = (cbuuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        try{
+            // when posted new data, train it straight away
+            // get the nlu data first
+            let cbdatas = await getCBDatasFromChatbot(cbuuid)
+
+            let domain = {
+                intents: [],
+                actions: [],
+                templates: {}
+            }
+
+            domain.intents = cbdatas.intents.map((intent)=>{
+                return intent.intent
+            })
+
+            domain.actions = cbdatas.actions.map((action)=>{
+                return action.name
+            })
+
+            cbdatas.actions.forEach((action) => {
+                domain.templates[action.name] = []
+                domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
+            })
+
+            // coreengine training for domain and stories
+            request
+                .post('coreengine/training')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    domain: domain
+                })
+                .end((err, res2) => {
+                    if (err) {
+                        return reject({ success: false, errors: err })
+                    }
+                    resolve({ success: true })
+                })
+
+            // ask for nlu training
+            /*request
+                .post('nluengine:5000/train?project=' + cbuuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
+                })
+                .end((err, res2) => {
+                    if (err) {
+                        return reject({ success: false, errors: err })
+                    }
+                    resolve({ success: true })
+                })*/
+
+            //resolve({ success: true })
+
+
+        } catch(e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+    })
+
+}
 
 // post entities, intents, actions and stories cb datas and store it in my mariadb
 router.post(
@@ -1030,23 +833,8 @@ router.post(
                 matchedData(req).cbdatas
             ).then((result) => {
 
-                // when posted new data, train it straight away
-                // get the nlu data first
-                getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
-                    // ask for training
-                    request
-                        .post('nluengine:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
-                        .set('contentType', 'application/json; charset=utf-8')
-                        .set('dataType', 'json')
-                        .send({
-                            rasa_nlu_data: convertToNluDataFormat(result.intents, result.entities)
-                        })
-                        .end((err, res2) => {
-                            if (err) {
-                                return res.status(422).json({ success: false, errors: err })
-                            }
-                            res.json({ success: true })
-                        })
+                traincb(req.chatbot_info.uuid).then((result) => {
+                    res.json({ success: true })
                 }).catch((error) => {
                     return res.status(422).json({ success: false, errors: error.toString() })
                 })
@@ -1061,31 +849,15 @@ router.post(
 // train my dialogue using nlu_data
 router.post('/cbtraining', (req, res) => {
 
-    // get the nlu data first
-    getCBDatasFromChatbot(req.chatbot_info.uuid).then((result) => {
-
-        // ask for training
-        request
-            .post('nluengine:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
-            .set('contentType', 'application/json; charset=utf-8')
-            .set('dataType', 'json')
-            .send({
-                rasa_nlu_data: convertToNluDataFormat(result.intents, result.entities)
-            })
-            .end((err, res2) => {
-                if (err) {
-                    return res.status(422).json({ success: false, errors: err })
-                }
-                res.json({ success: true })
-            })
-
-    }).catch((error) => {
+    traincb(req.chatbot_info.uuid).then((result)=>{
+        res.json({ success: true })
+    }).catch((error)=>{
         return res.status(422).json({ success: false, errors: error.toString() })
     })
 
 })
 
-// chatbot query message 
+// chatbot query message
 router.post(
     '/nlucheck',
     [
@@ -1116,132 +888,11 @@ router.post(
     }
 )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// get the nlu_data from this chatbot
-router.get('/NLUData', (req, res) => {
-
-    getNLUdataFromChatbot(req.chatbot_info.uuid).then((result) => {
-        res.json({ success: true, result: result })
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error })
-    })
-
-})
-
-// post the nlu_data
-router.post(
-    '/NLUData',
-    [
-        check('rasa_nlu_data', 'rasa_nlu_data for the chatbot project is missing').exists().isLength({ min: 1 })
-    ],
-    (req, res) => {
-        // checking the results
-        const errors = validationResult(req)
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-            updateNLUDataForChatbot(
-                req.chatbot_info.uuid,
-                matchedData(req).rasa_nlu_data
-            ).then((result) => {
-                res.json({ success: true })
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-        }
-    }
-)
-
-// get the stories from this chatbot
-router.get('/stories', (req, res) => {
-
-    getStoriesFromChatbot(req.chatbot_info.uuid).then((result) => {
-        res.json({ success: true, result: result })
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error.toString() })
-    })
-
-})
-
-// post the stories
-router.post(
-    '/stories',
-    [
-        check('stories', 'stories for the chatbot project is missing').exists().isLength({ min: 1 })
-    ],
-    (req, res) => {
-        // checking the results
-        const errors = validationResult(req)
-
-        if (!errors.isEmpty()) {
-            // if request datas is incomplete or error, return error msg
-            return res.status(422).json({ success: false, errors: errors.mapped() })
-        }
-        else {
-            updateStoriesForChatbot(
-                req.chatbot_info.uuid,
-                matchedData(req).stories
-            ).then((result) => {
-                res.json({ success: true })
-            }).catch((error) => {
-                return res.status(422).json({ success: false, errors: error })
-            })
-        }
-    }
-)
-
-// train my dialogue using nlu_data
-router.post('/nlutraining', (req, res) => {
-
-    // get the nlu data first
-    getNLUdataFromChatbot(req.chatbot_info.uuid).then((result) => {
-
-        // ask for training
-        request
-            .post('nluserver:5000/train?project=' + req.chatbot_info.uuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
-            .set('contentType', 'application/json; charset=utf-8')
-            .set('dataType', 'json')
-            .send({
-                rasa_nlu_data: result.rasa_nlu_data
-            })
-            .end((err, res2) => {
-                if(err) {
-                    return res.status(422).json({ success: false, errors: err })
-                }
-                res.json({ success: true })
-            })
-
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error.toString() })
-    })
-
-})
-
 // dialogue training status
 router.post('/nlustatus', (req, res) => {
     // ask for nlu training status
     request
-        .get('nluserver:5000/status')
+        .get('nluengine:5000/status')
         .end((err, res2) => {
             if (err) {
                 return res.status(422).json({ success: false, errors: err })
@@ -1252,7 +903,7 @@ router.post('/nlustatus', (req, res) => {
 })
 
 // train my chatbot
-router.post('/domaintraining', (req, res) => {
+/*router.post('/domaintraining', (req, res) => {
     // train nlu + domain + stories
 
     // send domain json to my coreserver.. it will convert to .yml format
@@ -1280,6 +931,6 @@ router.post('/domaintraining', (req, res) => {
         return res.status(422).json({ success: false, errors: error })
     })
 
-})
+})*/
 
 module.exports = router
