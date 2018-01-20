@@ -103,7 +103,6 @@ services:
       - mongoserver
     volumes:
       - ./chatbotapi/src:/home/node/app/src
-      - tmpcbvolume:/cb_datas
 
   #chatbotengine:
   #  image: cb/chatbotengine
@@ -144,19 +143,18 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - tmpcbvolume:/cb_datas
+      - nluprojsvol:/usr/src/projects
 
   coreengine:
     image: cb/coreengine
     build: ./coreengine
     restart: always
-    ports:
-      - 5005:5000
     volumes:
-      - tmpcbvolume:/cb_datas
+      - ./coreengine/src:/usr/src
+      - nluprojsvol:/nluprojects
 
 volumes:
   mongovolume:
   mysqlvolume:
   filestoragevol:
-  tmpcbvolume:
+  nluprojsvol:
