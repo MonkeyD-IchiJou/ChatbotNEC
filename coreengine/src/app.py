@@ -12,13 +12,13 @@ def training():
     projectPath = "/app/dialogues/" + request.get_json()['projectName']
 
     # turn stories into a file
-    tmpstoriesPath = '/usr/src/tmpstories.yml'
+    tmpstoriesPath = '/usr/cbtmp/tmpstories.yml'
     storiesfile = open(tmpstoriesPath, 'w+')
     storiesfile.write(request.get_json()['stories'])
     storiesfile.close()
 
     # turn domain into yml format file
-    tmpdomainPath = '/usr/src/tmpdomain.yml'
+    tmpdomainPath = '/usr/cbtmp/tmpdomain.yml'
     domainfile = open(tmpdomainPath, 'w+')
     yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
 

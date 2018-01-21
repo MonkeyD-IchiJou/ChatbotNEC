@@ -752,7 +752,7 @@ var traincb = (cbuuid) => {
             // get the nlu data first
             let cbdatas = await getCBDatasFromChatbot(cbuuid)
 
-            // prepare the domain json
+            // prepare the domain
             let domain = {
                 intents: [],
                 actions: [],
