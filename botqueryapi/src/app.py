@@ -49,6 +49,22 @@ def querycontinue():
     return jsonify(success='false', result='agent is not available')
 
 
+@app.route('/botrefresh', methods=['POST'])
+def botrefresh():
+    global allagents
+
+    projectName = request.get_json()['projectName']
+
+    if projectName in allagents:
+        # this agent alr exist in the allagents, delete it
+        allagents.pop(projectName, 0)
+        return jsonify(success='true', result='refreshed list')
+
+
+    # if this agent for some reason is not loaded yet...
+    return jsonify(success='true')
+
+
 
 # run my flask app
 if __name__ == '__main__':

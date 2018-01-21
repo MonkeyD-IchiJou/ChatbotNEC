@@ -307,6 +307,42 @@ var getChatbotsInfo = (user_id) => {
 
 }
 
+var getCBDatasFromChatbot = (chatbot_uuid) => {
+
+    return new Promise(async (resolve, reject) => {
+
+        let client = ''
+
+        try {
+            // connect to my mongodb
+            client = await MongoClient.connect(url)
+
+            // connect to my db
+            const db = client.db(process.env.MYSQL_DATABASE)
+
+            // Get the collection from my db
+            const collection = db.collection('chatbot_ml_datas')
+
+            // find all documents
+            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
+
+            if (findall.length > 0) {
+                resolve(findall[0])
+            }
+
+            throw 'no such nlu_data, are u sure this is the right chatbot uuid?'
+
+        } catch (e) {
+            // reject the error
+            reject(e.toString())
+        }
+
+        // rmb to close my mongodb collection
+        client.close()
+    })
+
+}
+
 // chatbot query message 
 router.post(
     '/query',
@@ -315,7 +351,7 @@ router.post(
         check('uuid', 'chatbot uuid for the chatbot query is missing').exists().isLength({ min: 1 }),
         check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
     ],
-    (req, res) => {
+    async (req, res) => {
 
         // checking the results
         const errors = validationResult(req)
@@ -329,25 +365,39 @@ router.post(
             let text_message = matchedData(req).text_message
             let sender_id = matchedData(req).sender_id
 
-            // user first init the conversation
-            request
-                .post('botqueryapi/conversations')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({ 
-                    projectName: projectName,
-                    text_message: text_message,
-                    sender_id: sender_id
-                })
-                .end((err, res2) => {
+            // need to see whether I am training it or not
 
-                    if (err) {
-                        res.json(err)
+            try {
+                // query to chatbot and get cbdatas at the same time
+                let waitresults = await Promise.all([
+                    request
+                        .post('botqueryapi/conversations')
+                        .set('contentType', 'application/json; charset=utf-8')
+                        .set('dataType', 'json')
+                        .send({
+                            projectName: projectName,
+                            text_message: text_message,
+                            sender_id: sender_id
+                        }),
+                    getCBDatasFromChatbot(projectName)
+                ])
+
+                let botres = JSON.parse(waitresults[0].text)
+                let actionReturn = {}
+
+                waitresults[1].actions.map((action)=>{
+                    if (action.name === botres.next_action) {
+                        // supposed to randomly pick one of it..
+                        // for now just always choose the first one
+                        actionReturn = action.allActions[0] 
                     }
-
-                    // search mongodb and return the action back to front end user
-                    res.json(JSON.parse(res2.text).next_action)
                 })
+
+                res.json({ action: actionReturn, result: botres })
+
+            } catch(error) {
+                res.json(error)
+            }
         }
 
     }
@@ -387,15 +437,7 @@ router.post(
                     if (err) {
                         res.json(err)
                     }
-
-                    if(JSON.parse(res2.text).next_action === "action_listen") {
-                        // no need to execute any action liao.. stop
-                        res.json(JSON.parse(res2.text))
-                    }
-                    else {
-                        // search mongodb and return the action back to front end user
-                        res.json(JSON.parse(res2.text).next_action)
-                    }
+                    res.json(JSON.parse(res2.text))
                 })
         }
 
@@ -627,42 +669,6 @@ var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
     })
 }
 
-var getCBDatasFromChatbot = (chatbot_uuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        let client = ''
-
-        try {
-            // connect to my mongodb
-            client = await MongoClient.connect(url)
-
-            // connect to my db
-            const db = client.db(process.env.MYSQL_DATABASE)
-
-            // Get the collection from my db
-            const collection = db.collection('chatbot_ml_datas')
-
-            // find all documents
-            let findall = await collection.find({ 'uuid': chatbot_uuid }).toArray()
-
-            if (findall.length > 0) {
-                resolve(findall[0])
-            }
-
-            throw 'no such nlu_data, are u sure this is the right chatbot uuid?'
-
-        } catch (e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-        // rmb to close my mongodb collection
-        client.close()
-    })
-
-}
-
 var convertToNluDataFormat = (intents, entities) => {
 
     let rasa_nlu_data = {
@@ -782,10 +788,19 @@ var traincb = (cbuuid) => {
                     .set('dataType', 'json')
                     .send({
                         rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
+                    }),
+                request
+                    .post('botqueryapi/botrefresh')
+                    .set('contentType', 'application/json; charset=utf-8')
+                    .set('dataType', 'json')
+                    .send({
+                        projectName: cbuuid
                     })
             ])
 
-            resolve({ dialogueTraining: all_results[0].body, nluTraining: all_results[1].body })
+            // stop letting user to query while I am training it
+
+            resolve({ dialogueTraining: all_results[0].body, nluTraining: all_results[1].body, refreshed: all_results[2].body })
 
         } catch (e) {
             console.log('come here liao')
@@ -858,13 +873,15 @@ router.post(
             return res.status(422).json({ success: false, errors: errors.mapped() })
         }
         else {
+            let cbuuid = req.chatbot_info.uuid
+
             updateCBDatasForChatbot(
-                req.chatbot_info.uuid,
+                cbuuid,
                 matchedData(req).cbdatas
             ).then((result) => {
 
                 // after updating the datas.. train the chatbot straight away
-                traincb(req.chatbot_info.uuid).then((result) => {
+                traincb(cbuuid).then((result) => {
                     res.json(result)
                 }).catch((error) => {
                     return res.status(422).json({ success: false, errors: error })
@@ -932,36 +949,5 @@ router.post('/nlustatus', (req, res) => {
             res.json({ success: true, result: res2.body.available_projects[req.chatbot_info.uuid] })
         })
 })
-
-// train my chatbot
-/*router.post('/domaintraining', (req, res) => {
-    // train nlu + domain + stories
-
-    // send domain json to my coreserver.. it will convert to .yml format
-    // convert stories json to .md format before sending to my coreserver
-
-    chatbotTraining(req.chatbot_info.uuid).then((result) => {
-
-        request
-            .post('coreserver/training')
-            .set('contentType', 'application/json; charset=utf-8')
-            .set('dataType', 'json')
-            .send({
-                projectName: req.chatbot_info.uuid,
-                domain: result.domain,
-                stories: result.stories
-            })
-            .end((err, res2) => {
-                if (err) {
-                    return res.status(422).json({ success: false, errors: err })
-                }
-                res.json({ success: true, result: res2.body })
-            })
-
-    }).catch((error) => {
-        return res.status(422).json({ success: false, errors: error })
-    })
-
-})*/
 
 module.exports = router
