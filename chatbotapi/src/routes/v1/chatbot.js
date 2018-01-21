@@ -311,7 +311,9 @@ var getChatbotsInfo = (user_id) => {
 router.post(
     '/query',
     [
-        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 })
+        check('text_message', 'text_message for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('uuid', 'chatbot uuid for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
     ],
     (req, res) => {
 
@@ -323,18 +325,77 @@ router.post(
             return res.status(422).json({ success: false, errors: errors.mapped() })
         }
         else {
+            let projectName = matchedData(req).uuid
+            let text_message = matchedData(req).text_message
+            let sender_id = matchedData(req).sender_id
+
+            // user first init the conversation
             request
-                .get('nluengine:5000/parse')
-                .query({ q: matchedData(req).text_message })
+                .post('botqueryapi/conversations')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({ 
+                    projectName: projectName,
+                    text_message: text_message,
+                    sender_id: sender_id
+                })
                 .end((err, res2) => {
+
                     if (err) {
-                        res.json({ err: err.toString() })
+                        res.json(err)
                     }
-                    let allcbres = res2.body
-                    let chosenintent = allcbres.intent_ranking[0]
-                    chosenintent.name
-                    var obj = JSON.parse(fs.readFileSync('/cb_datas/TESTINGONLY/intents/' + chosenintent.name + '.json', 'utf8'))
-                    res.json({ allres: allcbres, cbres: obj })
+
+                    // search mongodb and return the action back to front end user
+                    res.json(JSON.parse(res2.text).next_action)
+                })
+        }
+
+    }
+)
+
+// chatbot continue to execute the action
+router.post(
+    '/querycontinue',
+    [
+        check('executed_action', 'executed_action for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('uuid', 'chatbot uuid for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
+    ],
+    (req, res) => {
+
+        // checking the results
+        const errors = validationResult(req)
+
+        if (!errors.isEmpty()) {
+            // if request datas is incomplete or error, return error msg
+            return res.status(422).json({ success: false, errors: errors.mapped() })
+        }
+        else {
+            let projectName = matchedData(req).uuid
+            let executed_action = matchedData(req).executed_action
+            let sender_id = matchedData(req).sender_id
+
+            request
+                .post('botqueryapi/querycontinue')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    projectName: projectName,
+                    executed_action: executed_action,
+                    sender_id: sender_id
+                }).end((err, res2)=>{
+                    if (err) {
+                        res.json(err)
+                    }
+
+                    if(JSON.parse(res2.text).next_action === "action_listen") {
+                        // no need to execute any action liao.. stop
+                        res.json(JSON.parse(res2.text))
+                    }
+                    else {
+                        // search mongodb and return the action back to front end user
+                        res.json(JSON.parse(res2.text).next_action)
+                    }
                 })
         }
 
@@ -655,40 +716,79 @@ var convertToNluDataFormat = (intents, entities) => {
     return rasa_nlu_data
 }
 
-var chatbotTraining = (chatbot_uuid) => {
+var traincb = (cbuuid) => {
 
     return new Promise(async (resolve, reject) => {
 
         try {
+            // when posted new data, train it straight away
+            // get the nlu data first
+            let cbdatas = await getCBDatasFromChatbot(cbuuid)
 
-            // do things in parallel
-            let all_results = await Promise.all([
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbdomain = await getDomainFromChatbot(chatbot_uuid)
-                        resolve(cbdomain.domain)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
-                }),
-                new Promise(async (resolve, reject) => {
-                    try {
-                        let cbstories = await getStoriesFromChatbot(chatbot_uuid)
-                        resolve(cbstories.stories)
-                    } catch (e) {
-                        // reject the error
-                        reject(e.toString())
-                    }
+            // prepare the domain
+            let domain = {
+                intents: [],
+                actions: [],
+                entities: [],
+                action_factory: 'remote'
+            }
+
+            domain.intents = cbdatas.intents.map((intent) => {
+                return intent.intent
+            })
+
+            domain.actions = cbdatas.actions.map((action) => {
+                return action.name
+            })
+
+            domain.entities = cbdatas.entities.map((entity) => {
+                return entity.value
+            })
+
+            /*cbdatas.actions.forEach((action) => {
+                domain.templates[action.name] = []
+                domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
+            })*/
+
+            // next preparing all the stories
+            let jsonarr = []
+
+            cbdatas.stories.forEach((story) => {
+                jsonarr.push({ storyname: story.name })
+
+                let intentname = []
+                story.paths.forEach((path) => {
+                    intentname.push('_' + path.intent)
+                    intentname.push({ actions: path.actions })
+                    jsonarr.push({ intentname: JSON.parse(JSON.stringify(intentname)) })
                 })
+
+            })
+
+            // train the dialogues and nlu
+            let all_results = await Promise.all([
+                request
+                    .post('coreengine/training')
+                    .set('contentType', 'application/json; charset=utf-8')
+                    .set('dataType', 'json')
+                    .send({
+                        projectName: cbuuid,
+                        domain: domain,
+                        stories: json2md(jsonarr)
+                    }),
+                request
+                    .post('nluengine:5000/train?project=' + cbuuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
+                    .set('contentType', 'application/json; charset=utf-8')
+                    .set('dataType', 'json')
+                    .send({
+                        rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
+                    })
             ])
 
-            // convert stories to md string
-            let stories_md = json2md(all_results[1])
-
-            resolve({ domain: all_results[0], stories: stories_md })
+            resolve({ dialogueTraining: all_results[0].body, nluTraining: all_results[1].body })
 
         } catch (e) {
+            console.log('come here liao')
             // reject the error
             reject(e.toString())
         }
@@ -743,99 +843,6 @@ router.get('/CBDatas', (req, res) => {
 
 })
 
-var traincb = (cbuuid) => {
-
-    return new Promise(async (resolve, reject) => {
-
-        try{
-            // when posted new data, train it straight away
-            // get the nlu data first
-            let cbdatas = await getCBDatasFromChatbot(cbuuid)
-
-            // prepare the domain
-            let domain = {
-                intents: [],
-                actions: [],
-                entities:[],
-                action_factory: 'remote'
-            }
-
-            domain.intents = cbdatas.intents.map((intent)=>{
-                return intent.intent
-            })
-
-            domain.actions = cbdatas.actions.map((action)=>{
-                return action.name
-            })
-
-            domain.entities = cbdatas.entities.map((entity) => {
-                return entity.value
-            })
-
-            /*cbdatas.actions.forEach((action) => {
-                domain.templates[action.name] = []
-                domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
-            })*/
-
-            // next preparing all the stories
-            let jsonarr = []
-
-            cbdatas.stories.forEach((story) => {
-                jsonarr.push({storyname: story.name})
-
-                let intentname = []
-                story.paths.forEach((path)=>{
-                    intentname.push('_'+path.intent)
-                    intentname.push({ actions: path.actions})
-                    jsonarr.push({ intentname: JSON.parse(JSON.stringify(intentname)) })
-                })
-
-            })
-
-            // coreengine training for domain and stories
-            request
-                .post('coreengine/training')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({
-                    projectName: cbuuid,
-                    domain: domain,
-                    stories: json2md(jsonarr)
-                })
-                .end((err, res2) => {
-                    if (err) {
-                        return reject({ success: false, errors: err })
-                    }
-                    resolve({ success: true })
-                })
-
-            // ask for nlu training
-            /*request
-                .post('nluengine:5000/train?project=' + cbuuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({
-                    rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
-                })
-                .end((err, res2) => {
-                    if (err) {
-                        return reject({ success: false, errors: err })
-                    }
-                    resolve({ success: true })
-                })*/
-
-            //resolve({ success: true })
-
-
-        } catch(e) {
-            // reject the error
-            reject(e.toString())
-        }
-
-    })
-
-}
-
 // post entities, intents, actions and stories cb datas and store it in my mariadb
 router.post(
     '/CBDatas',
@@ -856,10 +863,11 @@ router.post(
                 matchedData(req).cbdatas
             ).then((result) => {
 
+                // after updating the datas.. train the chatbot straight away
                 traincb(req.chatbot_info.uuid).then((result) => {
-                    res.json({ success: true })
+                    res.json(result)
                 }).catch((error) => {
-                    return res.status(422).json({ success: false, errors: error.toString() })
+                    return res.status(422).json({ success: false, errors: error })
                 })
 
             }).catch((error) => {
@@ -872,10 +880,10 @@ router.post(
 // train my dialogue using nlu_data
 router.post('/cbtraining', (req, res) => {
 
-    traincb(req.chatbot_info.uuid).then((result)=>{
-        res.json({ success: true })
+    traincb(req.chatbot_info.uuid).then((result) => {
+        res.json(result)
     }).catch((error)=>{
-        return res.status(422).json({ success: false, errors: error.toString() })
+        return res.status(422).json({ success: false, errors: error })
     })
 
 })
