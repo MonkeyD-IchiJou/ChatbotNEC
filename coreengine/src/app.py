@@ -6,19 +6,19 @@ import rasa_core.train as rsTrain
 # init the flask app
 app = Flask(__name__)
 
-@app.route('/training', methods=['POST'])
-def training():
+
+def traindialogue(projectName):
     # setting up the project path (where to output my model).. /app/dialogues/_project_name
-    projectPath = "/app/dialogues/" + request.get_json()['projectName']
+    projectPath = "/app/dialogues/" + projectName
 
     # turn stories into a file
-    tmpstoriesPath = '/usr/cbtmp/tmpstories.yml'
+    tmpstoriesPath = '/usr/' + projectName + '_stories.yml'
     storiesfile = open(tmpstoriesPath, 'w+')
     storiesfile.write(request.get_json()['stories'])
     storiesfile.close()
 
     # turn domain into yml format file
-    tmpdomainPath = '/usr/cbtmp/tmpdomain.yml'
+    tmpdomainPath = '/usr/' + projectName + '_domain.yml'
     domainfile = open(tmpdomainPath, 'w+')
     yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
 
@@ -33,7 +33,11 @@ def training():
         additional_arguments
     )
 
-    return jsonify(status='ready')
+
+@app.route('/training', methods=['POST'])
+def training():
+    traindialogue(request.get_json()['projectName'])
+    return jsonify(success=True, status='ready')
 
 
 # run my flask app
