@@ -150,20 +150,20 @@ services:
     build: ./coreengine
     restart: always
     volumes:
-      - ./coreengine/src:/usr/src
       - dialoguesvol:/app/dialogues
+      - ./coreengine/src:/usr/src
 
   botqueryapi:
     image: cb/botqueryapi
     build: ./botqueryapi
     restart: always
-    ports:
-      - 5004:80
-      - 5005:5005
+    depends_on:
+      - nluengine
+      - coreengine
     volumes:
-      - ./botqueryapi/src:/usr/src
       - dialoguesvol:/app/dialogues
       - nluprojsvol:/nluprojects
+      - ./botqueryapi/src:/usr/src
 
 volumes:
   mongovolume:
