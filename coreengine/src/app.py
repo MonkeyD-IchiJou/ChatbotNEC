@@ -23,7 +23,7 @@ def traindialogue(projectName):
     yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
 
     # this is how i train my dialogue
-    additional_arguments = {"epochs": 300}
+    additional_arguments = {"epochs": 100}
     rsTrain.train_dialogue_model(
         tmpdomainPath,
         tmpstoriesPath,
