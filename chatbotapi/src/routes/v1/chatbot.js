@@ -384,12 +384,13 @@ router.post(
 
                 let botres = JSON.parse(waitresults[0].text)
                 let actionReturn = {}
+                console.log(botres.tracker.latest_message.intent.name)
 
                 waitresults[1].actions.map((action)=>{
-                    if (action.name === botres.next_action) {
+                    if (action.name === botres.tracker.latest_message.intent.name + '.res') {
                         // supposed to randomly pick one of it..
                         // for now just always choose the first one
-                        actionReturn = action.allActions[0] 
+                        actionReturn = action.allActions[0]
                     }
                 })
 
