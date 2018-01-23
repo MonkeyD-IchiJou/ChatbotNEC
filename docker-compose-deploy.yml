@@ -86,19 +86,37 @@ services:
     depends_on:
       - dbserver
       - mongoserver
-    volumes:
-      - tmpcbvolume:/cb_datas
 
-  cbengine:
-    image: cb/cbengine
+  nluengine:
+    image: cb/nluengine
+    build: ./nluengine
     restart: always
     ports:
       - 5000:5000
     volumes:
-      - tmpcbvolume:/cb_datas
+      - nluprojsvol:/usr/src/projects
+
+  coreengine:
+    image: cb/coreengine
+    build: ./coreengine
+    restart: always
+    volumes:
+      - dialoguesvol:/app/dialogues
+
+  botqueryapi:
+    image: cb/botqueryapi
+    build: ./botqueryapi
+    restart: always
+    depends_on:
+      - nluengine
+      - coreengine
+    volumes:
+      - dialoguesvol:/app/dialogues
+      - nluprojsvol:/nluprojects
 
 volumes:
   mongovolume:
   mysqlvolume:
   filestoragevol:
-  tmpcbvolume:
+  nluprojsvol:
+  dialoguesvol:
