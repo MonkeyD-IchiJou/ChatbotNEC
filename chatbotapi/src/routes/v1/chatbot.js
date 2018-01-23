@@ -343,7 +343,7 @@ var getCBDatasFromChatbot = (chatbot_uuid) => {
 
 }
 
-// chatbot query message 
+// chatbot query message
 router.post(
     '/query',
     [
