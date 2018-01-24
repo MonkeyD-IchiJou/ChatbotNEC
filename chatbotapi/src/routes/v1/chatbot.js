@@ -365,54 +365,37 @@ router.post(
             let text_message = matchedData(req).text_message
             let sender_id = matchedData(req).sender_id
 
-            // need to see whether I am training it or not
-
             try {
-                // query to chatbot and get cbdatas at the same time
-                let waitresults = await Promise.all([
-                    request
-                        .post('botqueryapi/conversations')
-                        .set('contentType', 'application/json; charset=utf-8')
-                        .set('dataType', 'json')
-                        .send({
-                            projectName: projectName,
-                            text_message: text_message,
-                            sender_id: sender_id
-                        }),
-                    getCBDatasFromChatbot(projectName)
-                ])
+                // query to chatbot and start the conversation
+                let startmsg = await request
+                    .post('coreengine/startmsg')
+                    .set('contentType', 'application/json; charset=utf-8')
+                    .set('dataType', 'json')
+                    .send({
+                        projectName: projectName,
+                        text_message: text_message,
+                        sender_id: sender_id
+                    })
 
-                let botres = JSON.parse(waitresults[0].text)
-                let actionReturn = {}
-                console.log(botres.tracker.latest_message.intent.name)
-
-                waitresults[1].actions.map((action)=>{
-                    if (action.name === botres.tracker.latest_message.intent.name + '.res') {
-                        // supposed to randomly pick one of it..
-                        // for now just always choose the first one
-                        actionReturn = action.allActions[0]
-                    }
-                })
-
-                res.json({ action: actionReturn, result: botres })
+                // return the query result back
+                res.json(JSON.parse(startmsg.text))
 
             } catch(error) {
-                res.json(error)
+                res.json({error: error.toString()})
             }
         }
 
     }
 )
 
-// chatbot continue to execute the action
 router.post(
-    '/querycontinue',
+    '/executeAction',
     [
-        check('executed_action', 'executed_action for the chatbot query is missing').exists().isLength({ min: 1 }),
+        check('action', 'executed_action for the chatbot query is missing').exists().isLength({ min: 1 }),
         check('uuid', 'chatbot uuid for the chatbot query is missing').exists().isLength({ min: 1 }),
         check('sender_id', 'sender_id for the chatbot query is missing').exists().isLength({ min: 1 })
     ],
-    (req, res) => {
+    async (req, res) => {
 
         // checking the results
         const errors = validationResult(req)
@@ -423,23 +406,41 @@ router.post(
         }
         else {
             let projectName = matchedData(req).uuid
-            let executed_action = matchedData(req).executed_action
+            let useraction = matchedData(req).action
             let sender_id = matchedData(req).sender_id
 
-            request
-                .post('botqueryapi/querycontinue')
-                .set('contentType', 'application/json; charset=utf-8')
-                .set('dataType', 'json')
-                .send({
-                    projectName: projectName,
-                    executed_action: executed_action,
-                    sender_id: sender_id
-                }).end((err, res2)=>{
-                    if (err) {
-                        res.json(err)
+            try {
+                let cbdatas = await getCBDatasFromChatbot(projectName)
+                let returnAction = {}
+                let cbactions = cbdatas.actions
+
+                for (let i = 0; i < cbactions.length; ++i) {
+                    if (cbactions[i].name === useraction) {
+                        // randomly choose one of it pls.. for now I only choose the first one
+                        returnAction = cbactions[i].allActions[0]
+                        break
                     }
-                    res.json(JSON.parse(res2.text))
-                })
+                }
+
+                // tell my engine that i have executed the action
+                let executedAct = await request
+                    .post('coreengine/executedAct')
+                    .set('contentType', 'application/json; charset=utf-8')
+                    .set('dataType', 'json')
+                    .send({
+                        projectName: projectName,
+                        executed_action: useraction,
+                        sender_id: sender_id
+                    })
+
+                // successfully executed the action, return the necessary data back
+                res.json({ returnAct: returnAction, result: JSON.parse(executedAct.text) })
+
+            }
+            catch(error) {
+                res.json({ error: error.toString() })
+            }
+
         }
 
     }
@@ -772,39 +773,31 @@ var traincb = (cbuuid) => {
 
             })
 
-            // train the dialogues and nlu
-            let all_results = await Promise.all([
-                request
-                    .post('coreengine/training')
-                    .set('contentType', 'application/json; charset=utf-8')
-                    .set('dataType', 'json')
-                    .send({
-                        projectName: cbuuid,
-                        domain: domain,
-                        stories: json2md(jsonarr)
-                    }),
-                request
-                    .post('nluengine:5000/train?project=' + cbuuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
-                    .set('contentType', 'application/json; charset=utf-8')
-                    .set('dataType', 'json')
-                    .send({
-                        rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
-                    }),
-                request
-                    .post('botqueryapi/botrefresh')
-                    .set('contentType', 'application/json; charset=utf-8')
-                    .set('dataType', 'json')
-                    .send({
-                        projectName: cbuuid
-                    })
-            ])
+            // train the nlu first
+            let nlutrainning = await request
+                .post('nluengine:5000/train?project=' + cbuuid + '&fixed_model_name=model&pipeline=spacy_sklearn')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    rasa_nlu_data: convertToNluDataFormat(cbdatas.intents, cbdatas.entities)
+                })
+
+            // train the dialogues later
+            let dialoguetrainning = await request
+                .post('coreengine/training')
+                .set('contentType', 'application/json; charset=utf-8')
+                .set('dataType', 'json')
+                .send({
+                    projectName: cbuuid,
+                    domain: domain,
+                    stories: json2md(jsonarr)
+                })
 
             // stop letting user to query while I am training it
 
-            resolve({ dialogueTraining: all_results[0].body, nluTraining: all_results[1].body, refreshed: all_results[2].body })
+            resolve({ dialogueTraining: dialoguetrainning.body, nluTraining: nlutrainning.body })
 
         } catch (e) {
-            console.log('come here liao')
             // reject the error
             reject(e.toString())
         }
