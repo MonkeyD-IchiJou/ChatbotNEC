@@ -104,38 +104,6 @@ services:
     volumes:
       - ./chatbotapi/src:/home/node/app/src
 
-  #chatbotengine:
-  #  image: cb/chatbotengine
-  #  build: ./chatbotengine
-  #  restart: always
-  #  depends_on:
-  #    - coreserver
-  #    - nluserver
-  #  ports:
-  #    - 5555:80
-  #  volumes:
-  #    - botproject:/app/projects
-  #    - botdialogue:/app/dialogues
-  #    - ./chatbotengine/src:/usr/src
-
-  #nluserver:
-  #  image: cb/nluserver
-  #  build: ./nluserver
-  #  restart: always
-  #  ports:
-  #    - 5000:5000
-  #  volumes:
-  #    - botproject:/usr/src/projects
-
-  #coreserver:
-  #  image: cb/coreserver
-  #  build: ./coreserver
-  #  restart: always
-  #  volumes:
-  #    - botdialogue:/app/dialogues
-  #    - tmpvolume:/cbtmp
-  #    - ./coreserver/src:/usr/src
-
   nluengine:
     image: cb/nluengine
     build: ./nluengine
@@ -151,19 +119,8 @@ services:
     restart: always
     volumes:
       - dialoguesvol:/app/dialogues
-      - ./coreengine/src:/usr/src
-
-  botqueryapi:
-    image: cb/botqueryapi
-    build: ./botqueryapi
-    restart: always
-    depends_on:
-      - nluengine
-      - coreengine
-    volumes:
-      - dialoguesvol:/app/dialogues
       - nluprojsvol:/nluprojects
-      - ./botqueryapi/src:/usr/src
+      - ./coreengine/src:/usr/src
 
 volumes:
   mongovolume:
