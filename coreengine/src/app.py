@@ -1,15 +1,23 @@
 from flask import Flask, request, jsonify
 import json
 import yaml
-import rasa_core.train as rsTrain
+
+from rasa_core.agent import Agent
+from rasa_core.interpreter import RasaNLUInterpreter
+from rasa_core.policies.keras_policy import KerasPolicy
+from rasa_core.policies.memoization import MemoizationPolicy
 
 # init the flask app
 app = Flask(__name__)
-
+allagents = {}
 
 def traindialogue(projectName):
+    global allagents
     # setting up the project path (where to output my model).. /app/dialogues/_project_name
     projectPath = "/app/dialogues/" + projectName
+
+    # get the path of my nlu model
+    nluPath = "/nluprojects/" + projectName + "/model"
 
     # turn stories into a file
     tmpstoriesPath = '/usr/' + projectName + '_stories.yml'
@@ -22,22 +30,45 @@ def traindialogue(projectName):
     domainfile = open(tmpdomainPath, 'w+')
     yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
 
-    # this is how i train my dialogue
-    additional_arguments = {"epochs": 100}
-    rsTrain.train_dialogue_model(
-        tmpdomainPath,
+    # prepare the agent
+    additional_arguments = {"epochs": 300}
+    agent = Agent(tmpdomainPath, policies=[MemoizationPolicy(), KerasPolicy()])
+    agent.interpreter = RasaNLUInterpreter(nluPath) # using my own nlu pls
+    agent.train(
         tmpstoriesPath,
         projectPath,
-        False,
-        None,
-        additional_arguments
+        True,
+        **additional_arguments
     )
+    # store or update this agent into my global list
+    allagents[projectName] = agent
 
 
 @app.route('/training', methods=['POST'])
 def training():
+    global allagents
     traindialogue(request.get_json()['projectName'])
     return jsonify(success=True, status='ready')
+
+
+@app.route('/startmsg', methods=['POST'])
+def startmsg():
+    global allagents
+    projectName = request.get_json()['projectName']
+    if projectName in allagents:
+        return jsonify(allagents[projectName].start_message_handling(text_message=request.get_json()['text_message'], sender_id=request.get_json()['sender_id']))
+    else:
+        return jsonify(errors='no such agents')
+
+
+@app.route('/executedAct', methods=['POST'])
+def executedAct():
+    global allagents
+    projectName = request.get_json()['projectName']
+    if projectName in allagents:
+        return jsonify(allagents[projectName].continue_message_handling(sender_id=request.get_json()['sender_id'], executed_action=request.get_json()['executed_action'], events=[]))
+    else:
+        return jsonify(errors='no such agents')
 
 
 # run my flask app
