@@ -5,7 +5,6 @@ const { matchedData, sanitize } = require('express-validator/filter')
 const uuidv4 = require('uuid/v4')
 const bs58 = require('bs58')
 const MongoClient = require('mongodb').MongoClient
-const json2md = require("json2md")
 const request = require('superagent')
 var fs = require('fs')
 
@@ -21,36 +20,6 @@ var { Database } = require('../../database')
 
 // MongoDB Connection URL
 const url = 'mongodb://' + process.env.MAMONGO_HOST
-
-json2md.converters.storyname = function (input, json2md) {
-    return "## " + input
-}
-
-json2md.converters.intentname = function (input, json2md) {
-    let output = ''
-    for (let i = 0; i < input.length; ++i) {
-        if (typeof input[i] == 'string') {
-            output += "* " + input[i] + "\n"
-        }
-        else {
-            let j2md = json2md([
-                input[i]
-            ])
-            output += j2md
-        }
-    }
-    return output
-}
-
-json2md.converters.actions = function (input, json2md) {
-    let output = ''
-    for (let i = 0; i < input.length; ++i) {
-        if (typeof input[i] == 'string') {
-            output += "  - " + input[i] + "\n"
-        }
-    }
-    return output
-}
 
 // generate a uuid for chatbot
 var getUUID = () => {
@@ -405,36 +374,47 @@ router.post(
             return res.status(422).json({ success: false, errors: errors.mapped() })
         }
         else {
-            let projectName = matchedData(req).uuid
-            let useraction = matchedData(req).action
-            let sender_id = matchedData(req).sender_id
+            const projectName = matchedData(req).uuid
+            const useraction = matchedData(req).action
+            const sender_id = matchedData(req).sender_id
 
             try {
-                let cbdatas = await getCBDatasFromChatbot(projectName)
-                let returnAction = {}
-                let cbactions = cbdatas.actions
 
-                for (let i = 0; i < cbactions.length; ++i) {
-                    if (cbactions[i].name === useraction) {
-                        // randomly choose one of it pls.. for now I only choose the first one
-                        returnAction = cbactions[i].allActions[0]
-                        break
-                    }
-                }
+                const workparallels = await Promise.all([
 
-                // tell my engine that i have executed the action
-                let executedAct = await request
-                    .post('coreengine/executedAct')
-                    .set('contentType', 'application/json; charset=utf-8')
-                    .set('dataType', 'json')
-                    .send({
-                        projectName: projectName,
-                        executed_action: useraction,
-                        sender_id: sender_id
-                    })
+                    new Promise(async (resolve, reject)=>{
+                        try{
+                            const cbdatas = await getCBDatasFromChatbot(projectName)
+                            const cbactions = cbdatas.actions
+
+                            for (let i = 0; i < cbactions.length; ++i) {
+                                if (cbactions[i].name === useraction) {
+                                    // randomly choose one of it pls.. for now I only choose the first one
+                                    resolve(cbactions[i].allActions[0])
+                                    break
+                                }
+                            }
+                        } 
+                        catch(e) {
+                            reject(e.toString())
+                        }
+                    }),
+
+                    // tell my engine that i have executed the action
+                    request
+                        .post('coreengine/executedAct')
+                        .set('contentType', 'application/json; charset=utf-8')
+                        .set('dataType', 'json')
+                        .send({
+                            projectName: projectName,
+                            executed_action: useraction,
+                            sender_id: sender_id
+                        })
+
+                ])
 
                 // successfully executed the action, return the necessary data back
-                res.json({ returnAct: returnAction, result: JSON.parse(executedAct.text) })
+                res.json({ returnAct: workparallels[0], result: JSON.parse(workparallels[1].text) })
 
             }
             catch(error) {
@@ -758,19 +738,24 @@ var traincb = (cbuuid) => {
                 domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
             })*/
 
-            // next preparing all the stories
-            let jsonarr = []
-
+            let storiesmdstr = ''
             cbdatas.stories.forEach((story) => {
-                jsonarr.push({ storyname: story.name })
+                storiesmdstr += '## ' + story.name + '\n'
 
-                let intentname = []
-                story.paths.forEach((path) => {
-                    intentname.push('_' + path.intent)
-                    intentname.push({ actions: path.actions })
-                    jsonarr.push({ intentname: JSON.parse(JSON.stringify(intentname)) })
+                if (story.wait_checkpoint) {
+                    storiesmdstr += '> ' + story.wait_checkpoint + '\n'
+                }
+
+                storiesmdstr += '* _' + story.intent + '\n'
+                story.actions.forEach((action)=>{
+                    storiesmdstr += '  - ' + action + '\n'
                 })
 
+                if (story.return_checkpoint) {
+                    storiesmdstr += '> ' + story.return_checkpoint + '\n'
+                }
+
+                storiesmdstr += '\n'
             })
 
             // train the nlu first
@@ -790,10 +775,8 @@ var traincb = (cbuuid) => {
                 .send({
                     projectName: cbuuid,
                     domain: domain,
-                    stories: json2md(jsonarr)
+                    stories: storiesmdstr
                 })
-
-            // stop letting user to query while I am training it
 
             resolve({ dialogueTraining: dialoguetrainning.body, nluTraining: nlutrainning.body })
 
