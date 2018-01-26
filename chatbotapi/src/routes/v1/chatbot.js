@@ -660,44 +660,66 @@ var convertToNluDataFormat = (intents, entities) => {
     }
 
     // preparing entity_synonyms
-    rasa_nlu_data.entity_synonyms = entities.map((entity, index) => {
-        return {
-            value: entity.value,
-            synonyms: [...entity.synonyms]
-        }
+     entities.forEach((entity, index) => {
+        entity.values.map((values, vindex)=>{
+            rasa_nlu_data.entity_synonyms.push(
+                {
+                    value: values.name,
+                    synonyms: [...values.synonyms]
+                }
+            )
+        })
     })
 
     // preparing common_examples
     intents.forEach((intent) => {
-        let intentName = intent.intent
-        let entitiesToSearch = [...intent.entities]
+        const entitiesToSearch = intent.entities
 
-        rasa_nlu_data.common_examples.push(...intent.texts.map((text) => {
+        intent.texts.map((text) => {
 
             let entitiesIn = []
 
-            // find out all the synonyms first
+            // find the entities in the text
             entitiesToSearch.forEach((entityToSearch, eindex) => {
-                for (let i = 0; i < entities.length; ++i) {
-                    if (entityToSearch === entities[i].value) {
-                        const sns = entities[i].synonyms
-                        sns.forEach((sn) => {
-                            let start = text.indexOf(sn)
-                            if (start >= 0) {
-                                let end = start + sn.length
-                                entitiesIn.push({ start: start, end: end, value: sn, entity: entityToSearch })
+                entities.forEach((mainEntity, mindex)=>{
+                    if(entityToSearch === mainEntity.name) {
+                        mainEntity.values.forEach((mainValue, mvindex)=>{
+
+                            let rvalue = mainValue.name
+
+                            // first see the value name got match in the text or not
+                            let start = text.indexOf(rvalue)
+                            let end = 0
+
+                            if(start >= 0) {
+                                // match the name..
+                                end = start + rvalue.length
+                                entitiesIn.push({ start: start, end: end, value: rvalue, entity: entityToSearch })
                             }
+                            else {
+                                // check for synonyms
+                                const sns = mainValue.synonyms
+                                sns.forEach((sn) => {
+                                    let start = text.indexOf(sn)
+                                    if (start >= 0) {
+                                        let end = start + sn.length
+                                        entitiesIn.push({ start: start, end: end, value: rvalue, entity: entityToSearch })
+                                    }
+                                })
+                            }
+
                         })
                     }
-                }
+                })
             })
 
-            return {
+            rasa_nlu_data.common_examples.push({
                 text: text,
-                intent: intentName,
+                intent: intent.intent,
                 entities: entitiesIn
-            }
-        }))
+            })
+
+        })
 
     })
 
@@ -718,6 +740,9 @@ var traincb = (cbuuid) => {
                 intents: [],
                 actions: [],
                 entities: [],
+                slots: {
+                    city: { type: 'categorical', values: ['New York City', 'Manhatten City'] }
+                },
                 action_factory: 'remote'
             }
 
@@ -730,7 +755,7 @@ var traincb = (cbuuid) => {
             })
 
             domain.entities = cbdatas.entities.map((entity) => {
-                return entity.value
+                return entity.name
             })
 
             /*cbdatas.actions.forEach((action) => {
