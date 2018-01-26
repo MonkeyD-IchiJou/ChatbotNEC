@@ -771,7 +771,18 @@ var traincb = (cbuuid) => {
                     storiesmdstr += '> ' + story.wait_checkpoint + '\n'
                 }
 
-                storiesmdstr += '* _' + story.intent + '\n'
+                let intentconditionsstr = ''
+                if (story.intentConditions.length > 0) {
+                    intentconditionsstr = '['
+                    story.intentConditions.forEach((intentCondition)=>{
+                        intentconditionsstr += intentCondition.entity + '=' + intentCondition.value + ','
+                    })
+                    // remove the last comma
+                    intentconditionsstr = intentconditionsstr.slice(0, -1)
+                    intentconditionsstr += ']'
+                }
+
+                storiesmdstr += '* _' + story.intent + intentconditionsstr + '\n'
                 story.actions.forEach((action)=>{
                     storiesmdstr += '  - ' + action + '\n'
                 })
