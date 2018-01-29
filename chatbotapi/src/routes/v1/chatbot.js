@@ -639,7 +639,7 @@ var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
             const collection = db.collection('chatbot_ml_datas')
 
             // Update the document with an atomic operator
-            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories } }, { upsert: true, w: 1 })
+            let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories, subDomains: cbdatas.subDomains } }, { upsert: true, w: 1 })
 
             if (!update_chatbot.result.n) {
                 throw 'no such cb datas for this cb'
