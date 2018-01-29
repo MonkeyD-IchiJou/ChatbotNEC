@@ -357,6 +357,10 @@ router.post(
     }
 )
 
+function getRandomInt(max) {
+    return Math.floor(Math.random() * Math.floor(max));
+}
+
 router.post(
     '/executeAction',
     [
@@ -389,8 +393,9 @@ router.post(
 
                             for (let i = 0; i < cbactions.length; ++i) {
                                 if (cbactions[i].name === useraction) {
-                                    // randomly choose one of it pls.. for now I only choose the first one
-                                    resolve(cbactions[i].allActions[0])
+                                    // randomly choose one of it pls..
+                                    const allactions = cbactions[i].allActions
+                                    resolve(allactions[getRandomInt(allactions.length)])
                                     break
                                 }
                             }
