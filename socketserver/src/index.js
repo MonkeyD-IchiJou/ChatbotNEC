@@ -323,7 +323,7 @@ lcIO.on('connection', (socket) => {
 
             socket.sessionData = {
                 room: rooms[1], // store the room name in the socket session for this admin
-                isClientMah: false, // this socket is a client
+                isClientMah: false, // this socket is not a client
                 username: admindata.username,
                 userid: admindata.userid
             }
