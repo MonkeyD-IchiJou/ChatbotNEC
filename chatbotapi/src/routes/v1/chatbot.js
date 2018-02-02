@@ -745,9 +745,9 @@ var traincb = (cbuuid) => {
                 intents: [],
                 actions: [],
                 entities: [],
-                slots: {
+                /*slots: {
                     city: { type: 'categorical', values: ['New York City', 'Manhatten City'] }
-                },
+                },*/
                 action_factory: 'remote'
             }
 
@@ -778,16 +778,16 @@ var traincb = (cbuuid) => {
 
                 let intentconditionsstr = ''
                 if (story.intentConditions.length > 0) {
-                    intentconditionsstr = '['
+                    intentconditionsstr = '{'
                     story.intentConditions.forEach((intentCondition)=>{
-                        intentconditionsstr += intentCondition.entity + '=' + intentCondition.value + ','
+                        intentconditionsstr += '"' + intentCondition.entity + '" = "' + intentCondition.value + '",'
                     })
                     // remove the last comma
                     intentconditionsstr = intentconditionsstr.slice(0, -1)
-                    intentconditionsstr += ']'
+                    intentconditionsstr += '}'
                 }
 
-                storiesmdstr += '* _' + story.intent + intentconditionsstr + '\n'
+                storiesmdstr += '* ' + story.intent + '\n'
                 story.actions.forEach((action)=>{
                     storiesmdstr += '  - ' + action + '\n'
                 })
