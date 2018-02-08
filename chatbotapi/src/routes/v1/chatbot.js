@@ -112,7 +112,6 @@ var createNewChatbot = (user_submit) => {
 
 // delete a live chat for this user
 var deleteChatbotProject = (chatbot_uuid) => {
-
   return new Promise(async (resolve, reject) => {
 
     // connect to mariadb/mysql
@@ -177,7 +176,48 @@ var deleteChatbotProject = (chatbot_uuid) => {
     client.close()
 
   })
+}
 
+// refresh live chat project uuid
+var updateIntentHit = (chatbot_uuid, intentname) => {
+  return new Promise(async (resolve, reject) => {
+
+    // connect to mariadb/mysql
+    let database = new Database()
+
+    try {
+      // all necessary sql queries
+      const sql_queries = [
+        'UPDATE intents_hits SET hits=hits+1 WHERE uuid=? AND intentName=?',
+        'INSERT INTO intents_hits (uuid, intentName, hits) VALUES (?, ?, 1)'
+      ]
+
+      // all possible errors
+      const db_errors = [
+        'no such chatbot project'
+      ]
+
+      // update the intent hit
+      const row_updatehit = await database.query(sql_queries[0], [chatbot_uuid, intentname])
+
+      if (!row_updatehit.affectedRows) {
+        // if this is the new entry
+        const inserthit = await database.query(sql_queries[1], [chatbot_uuid, intentname])
+      }
+
+      // if update finish
+      resolve()
+
+    }
+    catch (e) {
+      // reject the error
+      reject(e.toString())
+    }
+
+    // rmb to close the db
+    let dbclose = await database.close()
+
+  })
 }
 
 // refresh live chat project uuid
@@ -390,8 +430,17 @@ router.post(
             sender_id: sender_id
           })
 
+        const cbtracker = JSON.parse(startmsg.text)
+
+        if (sender_id.search("admin:") < 0) {
+          // if is client sent this msg, then update the intent hit counts
+          const hitIntent = cbtracker.tracker.latest_message.intent.name
+          // store/update the intent name that the User hit
+          await updateIntentHit(projectName, hitIntent)
+        }
+
         // return the query result back
-        res.json(JSON.parse(startmsg.text))
+        res.json(cbtracker)
 
       } catch (error) {
         res.json({ error: error.toString() })
@@ -661,7 +710,7 @@ var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
       const collection = db.collection('chatbot_ml_datas')
 
       // Update the document with an atomic operator
-      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories, subDomains: cbdatas.subDomains } }, { upsert: true, w: 1 })
+      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories } }, { upsert: true, w: 1 })
 
       if (!update_chatbot.result.n) {
         throw 'no such cb datas for this cb'
@@ -754,7 +803,6 @@ var convertToNluDataFormat = (intents, entities) => {
 }
 
 var traincb = (cbuuid) => {
-
   return new Promise(async (resolve, reject) => {
 
     try {
@@ -849,7 +897,6 @@ var traincb = (cbuuid) => {
     }
 
   })
-
 }
 
 // the rest of the api need chatbot uuid in order to do things
