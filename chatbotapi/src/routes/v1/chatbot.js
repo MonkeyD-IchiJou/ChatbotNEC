@@ -379,6 +379,44 @@ var getCBDatasFromChatbot = (chatbot_uuid) => {
 
 }
 
+
+var retrieveAllCBDatasFromCB = async (chatbot_uuid) => {
+  // get the cbdatas from this cb first
+  const cbdatas = await getCBDatasFromChatbot(chatbot_uuid)
+
+  if (cbdatas.combinedprojs.length > 0) {
+
+    let combineddatas = {...cbdatas}
+    let allcbqueries = []
+
+    // need to combined with other projects
+    cbdatas.combinedprojs.forEach((extraprojuuid)=>{
+      allcbqueries.push(new Promise(async (resolve, reject)=>{
+        const otherdatas = await getCBDatasFromChatbot(extraprojuuid)
+        resolve(otherdatas)
+      }))
+    })
+
+    // query all of them at the same time
+    let allquerieddatas = await Promise.all(allcbqueries)
+
+    // then combined them tgt
+    allquerieddatas.forEach((querydatas)=>{
+      combineddatas.entities.push(...querydatas.entities)
+      combineddatas.intents.push(...querydatas.intents)
+      combineddatas.actions.push(...querydatas.actions)
+      combineddatas.stories.push(...querydatas.stories)
+    })
+
+    return combineddatas
+  }
+
+  // 1) if no need, then return the initial cbdatas
+  return cbdatas
+
+  // 2) if need, retrieve other cbdatas and combined it tgt, then return it for training 
+}
+
 var getRandomInt = (max) => {
   return Math.floor(Math.random() * Math.floor(max));
 }
@@ -477,7 +515,7 @@ router.post(
 
           new Promise(async (resolve, reject) => {
             try {
-              const cbdatas = await getCBDatasFromChatbot(projectName)
+              const cbdatas = await retrieveAllCBDatasFromCB(projectName)
               const cbactions = cbdatas.actions
 
               for (let i = 0; i < cbactions.length; ++i) {
@@ -710,7 +748,7 @@ var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
       const collection = db.collection('chatbot_ml_datas')
 
       // Update the document with an atomic operator
-      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories } }, { upsert: true, w: 1 })
+      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories, combinedprojs: cbdatas.combinedprojs } }, { upsert: true, w: 1 })
 
       if (!update_chatbot.result.n) {
         throw 'no such cb datas for this cb'
@@ -808,7 +846,7 @@ var traincb = (cbuuid) => {
     try {
       // when posted new data, train it straight away
       // get the nlu data first
-      let cbdatas = await getCBDatasFromChatbot(cbuuid)
+      let cbdatas = await retrieveAllCBDatasFromCB(cbuuid)
 
       // prepare the domain
       let domain = {
@@ -832,11 +870,6 @@ var traincb = (cbuuid) => {
       domain.entities = cbdatas.entities.map((entity) => {
         return entity.name
       })
-
-      /*cbdatas.actions.forEach((action) => {
-          domain.templates[action.name] = []
-          domain.templates[action.name].push({ text: JSON.stringify(action.allActions[0]) })
-      })*/
 
       let storiesmdstr = ''
       cbdatas.stories.forEach((story) => {
