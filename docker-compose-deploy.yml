@@ -91,8 +91,6 @@ services:
     image: cb/nluengine
     build: ./nluengine
     restart: always
-    ports:
-      - 5000:5000
     volumes:
       - nluprojsvol:/usr/src/projects
 
@@ -100,16 +98,6 @@ services:
     image: cb/coreengine
     build: ./coreengine
     restart: always
-    volumes:
-      - dialoguesvol:/app/dialogues
-
-  botqueryapi:
-    image: cb/botqueryapi
-    build: ./botqueryapi
-    restart: always
-    depends_on:
-      - nluengine
-      - coreengine
     volumes:
       - dialoguesvol:/app/dialogues
       - nluprojsvol:/nluprojects
