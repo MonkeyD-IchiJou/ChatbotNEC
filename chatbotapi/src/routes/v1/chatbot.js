@@ -468,6 +468,8 @@ router.post(
             sender_id: sender_id
           })
 
+        let daresult = await getCBDatasFromChatbot(projectName)
+
         const cbtracker = JSON.parse(startmsg.text)
 
         if (sender_id.search("admin:") < 0) {
@@ -478,7 +480,7 @@ router.post(
         }
 
         // return the query result back
-        res.json(cbtracker)
+        res.json({ ...cbtracker, initialResponse: daresult.initialResponse })
 
       } catch (error) {
         res.json({ error: error.toString() })
@@ -748,7 +750,7 @@ var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
       const collection = db.collection('chatbot_ml_datas')
 
       // Update the document with an atomic operator
-      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories, combinedprojs: cbdatas.combinedprojs } }, { upsert: true, w: 1 })
+      let update_chatbot = await collection.updateOne({ uuid: chatbot_uuid }, { $set: { entities: cbdatas.entities, intents: cbdatas.intents, actions: cbdatas.actions, stories: cbdatas.stories, combinedprojs: cbdatas.combinedprojs, initialResponse: cbdatas.initialResponse } }, { upsert: true, w: 1 })
 
       if (!update_chatbot.result.n) {
         throw 'no such cb datas for this cb'
