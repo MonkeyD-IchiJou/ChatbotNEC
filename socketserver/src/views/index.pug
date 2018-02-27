@@ -10,6 +10,8 @@ html(lang='en')
     link(href='/chatbox/static/css/main.19567d31.css', rel='stylesheet')
   body
     noscript You need to enable JavaScript to run this app.
+    video#videoPlayer(width='720', height='480', controls='')
+      source(src='http://localhost/vid/stream', type='video/mp4')
     #root
     script(type='text/javascript', src='/chatbox/static/js/main.8f5fc504.js')
     script window.RenderApp("#{chatbotId}","#{livechatId}")

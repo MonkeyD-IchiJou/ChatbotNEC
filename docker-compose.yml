@@ -91,6 +91,17 @@ services:
     volumes:
       - ./socketserver/src:/home/node/app/src
 
+  videoserver:
+    image: cb/videoserver
+    build: ./videoserver
+    restart: always
+    env_file:
+      - ./environments/node.env
+    depends_on:
+      - dbserver
+    volumes:
+      - ./videoserver/src:/home/node/app/src
+
   chatbotapi:
     image: cb/chatbotapi
     build: ./chatbotapi
