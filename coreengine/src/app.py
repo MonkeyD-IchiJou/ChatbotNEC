@@ -4,7 +4,6 @@ import yaml
 import shutil
 
 from rasa_core.agent import Agent
-from rasa_core.interpreter import RasaNLUInterpreter
 from rasa_core.policies.keras_policy import KerasPolicy
 from rasa_core.policies.memoization import MemoizationPolicy
 
@@ -33,9 +32,8 @@ def traindialogue(projectName):
   yaml.dump(request.get_json()['domain'], domainfile, default_flow_style=False)
 
   # prepare the agent
-  additional_arguments = {"epochs": 300}
-  agent = Agent(tmpdomainPath, policies=[MemoizationPolicy(), KerasPolicy()])
-  agent.interpreter = RasaNLUInterpreter(nluPath)  # using my own nlu pls
+  additional_arguments = {"epochs": 300, "max_history": 3}
+  agent = Agent(tmpdomainPath, policies=[MemoizationPolicy(), KerasPolicy()], featurizer=None, interpreter=nluPath)
   agent.train(
     tmpstoriesPath,
     projectPath,

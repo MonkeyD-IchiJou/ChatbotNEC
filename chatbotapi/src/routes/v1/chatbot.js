@@ -858,7 +858,8 @@ var traincb = (cbuuid) => {
         /*slots: {
             city: { type: 'categorical', values: ['New York City', 'Manhatten City'] }
         },*/
-        action_factory: 'remote'
+        action_factory: 'remote',
+        config: { store_entities_as_slots: true }
       }
 
       domain.intents = cbdatas.intents.map((intent) => {
