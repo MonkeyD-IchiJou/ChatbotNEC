@@ -379,7 +379,6 @@ var getCBDatasFromChatbot = (chatbot_uuid) => {
 
 }
 
-
 var retrieveAllCBDatasFromCB = async (chatbot_uuid) => {
   // get the cbdatas from this cb first
   const cbdatas = await getCBDatasFromChatbot(chatbot_uuid)
@@ -708,10 +707,7 @@ router.get(
 )
 
 // get all the chatbot projects infos for this user
-router.get(
-  '/infos',
-  (req, res) => {
-
+router.get('/infos', (req, res) => {
     // checking the results
     const errors = validationResult(req)
 
@@ -730,9 +726,7 @@ router.get(
         return res.status(422).json({ success: false, errors: error })
       })
     }
-
-  }
-)
+})
 
 var updateCBDatasForChatbot = (chatbot_uuid, cbdatas) => {
   return new Promise(async (resolve, reject) => {
@@ -982,6 +976,7 @@ router.get('/CBDatas', (req, res) => {
 })
 
 // post entities, intents, actions and stories cb datas and store it in my mongodb
+// and then train the chatbot
 router.post(
   '/CBDatas',
   [
@@ -1005,6 +1000,31 @@ router.post(
           return res.status(422).json({ success: false, errors: error })
         })
 
+      }).catch((error) => {
+        return res.status(422).json({ success: false, errors: error })
+      })
+
+    })
+  }
+)
+
+// just save the cbdatas only
+router.put(
+  '/CBDatas',
+  [
+    check('cbdatas', 'cbdatas for the chatbot project is missing').exists().isLength({ min: 1 })
+  ],
+  (req, res) => {
+    expressValidateFirst(req, res, () => {
+
+      // get the cb uuid first
+      let cbuuid = req.chatbot_info.uuid
+
+      updateCBDatasForChatbot(
+        cbuuid,
+        matchedData(req).cbdatas
+      ).then((result) => {
+        res.json(result)
       }).catch((error) => {
         return res.status(422).json({ success: false, errors: error })
       })

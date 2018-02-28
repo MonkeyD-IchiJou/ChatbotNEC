@@ -77,6 +77,14 @@ services:
     depends_on:
       - dbserver
 
+  videoserver:
+    image: cb/videoserver
+    restart: always
+    env_file:
+      - ./environments/node.env
+    depends_on:
+      - dbserver
+
   chatbotapi:
     image: cb/chatbotapi
     restart: always
