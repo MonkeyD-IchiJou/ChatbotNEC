@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 import json
 import yaml
@@ -86,4 +87,12 @@ def executedAct():
 
 # run my flask app
 if __name__ == '__main__':
+  # firstly load all the existing project in my dir fi
+  allprojectsPath = [x[1] for x in os.walk("/app/dialogues")][0]
+  allnlusPath = [y[1] for y in os.walk("/nluprojects/")][0]
+  localcount = 0
+  for projectpath in allprojectsPath:
+    if projectpath == allnlusPath[localcount]:
+      allagents[projectpath] = Agent.load("/app/dialogues/" + projectpath, interpreter="/nluprojects/" + projectpath + "/model")
+    localcount+=1
   app.run(host='0.0.0.0', port=80, debug=True)
