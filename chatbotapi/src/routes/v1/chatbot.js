@@ -546,8 +546,22 @@ router.post(
 
         ])
 
+        // see whether got any fulfillment link or not
+        const returnAct = workparallels[0]
+        returnAct.forEach((eachact)=>{
+          switch (eachact.type) {
+            case 'WH':
+              // call webhook here and wait for it to return
+              console.log(returnAct)
+              break
+          
+            default:
+              break
+          }
+        })
+
         // successfully executed the action, return the necessary data back
-        res.json({ returnAct: workparallels[0], result: JSON.parse(workparallels[1].text) })
+        res.json({ returnAct: returnAct, result: JSON.parse(workparallels[1].text) })
 
       }
       catch (error) {
