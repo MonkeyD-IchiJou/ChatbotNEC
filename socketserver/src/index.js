@@ -80,15 +80,24 @@ app.set('view engine', 'pug')
 // serve the client files
 app.get('/', function (req, res) {
 
-    // need to see whether the tokens are valid or not
-    // check validation in client side?
-    let livechatToken = req.query.livechatToken
-    let chatbotToken = req.query.botToken
+  // need to see whether the tokens are valid or not
+  // check validation in client side?
+  let livechatToken = req.query.livechatToken
+  let chatbotToken = req.query.botToken
 
+  if (livechatToken || chatbotToken) {
     res.render('index', {
-        chatbotId: chatbotToken,
-        livechatId: livechatToken
+      chatbotId: chatbotToken,
+      livechatId: livechatToken
     })
+  }
+  else {
+    // pure render the main chatbot
+    res.render('index', {
+      chatbotId: 'n6Avu8RVGLffnp8ghz8PaavD5R6cYzHWRPbQxh26fpCtdqgps',
+      livechatId: ''
+    })
+  }
 
 })
 
@@ -274,7 +283,6 @@ cbIO.on('connection', (socket) => {
 // NOTE:
 // each live chat projects is one room
 // room name will be the UUID of the livechat project
-
 lcIO.on('connection', (socket) => {
 
     // listening on whether got any new clients request to join any room or not
