@@ -179,7 +179,7 @@ var deleteChatbotProject = (chatbot_uuid) => {
 }
 
 // refresh live chat project uuid
-var updateIntentHit = (chatbot_uuid, intentname) => {
+var updateIntentHit = (chatbot_uuid, intentname, sender_id, text_message) => {
   return new Promise(async (resolve, reject) => {
 
     // connect to mariadb/mysql
@@ -188,8 +188,7 @@ var updateIntentHit = (chatbot_uuid, intentname) => {
     try {
       // all necessary sql queries
       const sql_queries = [
-        'UPDATE intents_hits SET hits=hits+1 WHERE uuid=? AND intentName=?',
-        'INSERT INTO intents_hits (uuid, intentName, hits) VALUES (?, ?, 1)'
+        'INSERT INTO intents_hits (uuid, intentName, senderID, txtmsg) VALUES (?, ?, ?, ?)'
       ]
 
       // all possible errors
@@ -197,13 +196,7 @@ var updateIntentHit = (chatbot_uuid, intentname) => {
         'no such chatbot project'
       ]
 
-      // update the intent hit
-      const row_updatehit = await database.query(sql_queries[0], [chatbot_uuid, intentname])
-
-      if (!row_updatehit.affectedRows) {
-        // if this is the new entry
-        const inserthit = await database.query(sql_queries[1], [chatbot_uuid, intentname])
-      }
+      const inserthit = await database.query(sql_queries[0], [chatbot_uuid, intentname, sender_id, text_message])
 
       // if update finish
       resolve()
@@ -475,7 +468,7 @@ router.post(
           // if is client sent this msg, then update the intent hit counts
           const hitIntent = cbtracker.tracker.latest_message.intent.name
           // store/update the intent name that the User hit
-          await updateIntentHit(projectName, hitIntent)
+          await updateIntentHit(projectName, hitIntent, sender_id, text_message)
         }
 
         // return the query result back
